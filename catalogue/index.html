@@ -226,14 +226,14 @@
 </main>
 
 <footer>
-  <a href="https://studio.phytolabs.in">Phyto Studio</a> &nbsp;·&nbsp;
+  <a href="https://shiva16.github.io/phyto-studio">Phyto Studio</a> &nbsp;·&nbsp;
   <a href="https://phytolabs.in">phytolabs.in</a> &nbsp;·&nbsp;
   <a href="https://tcplants.in">tcplants.in</a> &nbsp;·&nbsp;
   <a href="https://carnivorousplants.in">carnivorousplants.in</a>
 </footer>
 
 <script>
-const CATALOGUE_URL = 'https://studio.phytolabs.in/data/catalogue.json';
+const CATALOGUE_URL = 'https://shiva16.github.io/phyto-studio/data/catalogue.json';
 
 const BRAND_LABELS = {
   phytolabs: 'Phyto Labs',
@@ -248,7 +248,20 @@ const BRAND_SITES = {
 };
 
 let allPresentations = [];
-let activeBrand = new URLSearchParams(location.search).get('brand') || 'all';
+
+function detectBrand() {
+  // URL param takes priority (direct studio access)
+  const urlBrand = new URLSearchParams(location.search).get('brand');
+  if (urlBrand) return urlBrand;
+  // Hostname-based: works when proxied through each brand's domain
+  const h = location.hostname;
+  if (h.includes('tcplants')) return 'tcplants';
+  if (h.includes('carnivorous')) return 'carnivorousplants';
+  if (h.includes('phytolabs') && !h.includes('studio')) return 'phytolabs';
+  return 'all'; // studio.phytolabs.in or localhost → show all
+}
+
+let activeBrand = detectBrand();
 
 function formatDate(d) {
   if (!d) return '';
@@ -282,7 +295,7 @@ function renderCards(brand) {
   }
 
   grid.innerHTML = filtered.map(p => `
-    <a class="card" href="https://studio.phytolabs.in/view/${p.slug}/" target="_blank" rel="noopener">
+    <a class="card" href="https://shiva16.github.io/phyto-studio/view/${p.slug}/" target="_blank" rel="noopener">
       <div class="card-accent ${p.brand}"></div>
       <div class="card-body">
         <div class="card-brand ${p.brand}">${BRAND_LABELS[p.brand] || p.brand}</div>
@@ -295,7 +308,7 @@ function renderCards(brand) {
           <span>${formatDate(p.created)}</span>
           ${p.project ? `<span>${p.project}</span>` : ''}
         </div>
-        <button class="view-btn ${p.brand}" onclick="event.preventDefault();window.open('https://studio.phytolabs.in/view/${p.slug}/','_blank')">View →</button>
+        <button class="view-btn ${p.brand}" onclick="event.preventDefault();window.open('https://shiva16.github.io/phyto-studio/view/${p.slug}/','_blank')">View →</button>
       </div>
     </a>
   `).join('');
@@ -318,10 +331,14 @@ document.getElementById('brandTabs').addEventListener('click', e => {
   if (btn) setActiveBrand(btn.dataset.brand);
 });
 
-// Set initial active tab
+// Set initial active tab; hide switcher when proxied through a brand domain
 document.querySelectorAll('.brand-tab').forEach(btn => {
   btn.classList.toggle('active', btn.dataset.brand === activeBrand);
 });
+if (activeBrand !== 'all') {
+  const tabs = document.getElementById('brandTabs');
+  if (!new URLSearchParams(location.search).get('brand')) tabs.style.display = 'none';
+}
 
 // Load catalogue data
 fetch(CATALOGUE_URL + '?t=' + Date.now())
