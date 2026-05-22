@@ -34,6 +34,8 @@ html,body{height:100%;font-family:var(--font);font-size:14px;color:var(--text);b
 input,select,textarea,button{font-family:inherit}
 
 /* ---- BUTTONS ---- */
+/* Icon/toolbar buttons use system sans-serif for broad Unicode glyph coverage */
+.btn-icon,.tb-btn,.sp-btn,.pp-icon-btn{font-family:system-ui,sans-serif}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r);border:none;font-size:13px;font-weight:500;font-family:var(--font);cursor:pointer;transition:background .15s,opacity .15s;white-space:nowrap;line-height:1}
 .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent2)}
 .btn-secondary{background:var(--surface2);color:var(--text)}.btn-secondary:hover{background:var(--border)}
@@ -487,10 +489,10 @@ async function mountDashboard(){
         <button class="brand-tab${S.brand==='carnivorousplants'?' active':''}" data-brand="carnivorousplants">Carnivorous Plants</button>
       </div>
       <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
-        <div class="dash-search"><span class="dash-search-icon">⌕</span><input id="dash-q" type="text" placeholder="Search…" oninput="filterDash(this.value)"></div>
+        <div class="dash-search"><span class="dash-search-icon"></span><input id="dash-q" type="text" placeholder="Search…" oninput="filterDash(this.value)"></div>
         <button class="btn btn-ghost btn-sm" onclick="openDashSettings()" title="Settings">⚙</button>
         <button class="btn btn-ghost btn-sm" onclick="cycleTheme()">◑</button>
-        <button class="btn btn-ghost btn-sm" onclick="mountAuth()">⎋</button>
+        <button class="btn btn-ghost btn-sm" onclick="mountAuth()">Sign out</button>
       </div>
     </div>
     <div class="dash-body">
@@ -517,7 +519,7 @@ function renderDashGrid(list){
   const grid=document.getElementById('pres-grid');
   if(!grid)return;
   let html=`<div class="pres-card new-card" data-action="new">
-    <div class="new-card-plus">＋</div><div class="new-card-lbl">New Presentation</div></div>`;
+    <div class="new-card-plus">+</div><div class="new-card-lbl">New Presentation</div></div>`;
   filtered.slice().reverse().forEach(p=>{
     const meta=statusMeta(p);
     const hasShare=p.status==='published'&&p.viewKey;
@@ -750,7 +752,7 @@ async function openEditor(slug){
         <button class="btn btn-ghost btn-sm" onclick="openAiPanel()" title="AI Content Generator">✦ AI</button>
         <button class="btn btn-ghost btn-sm" onclick="openPresSettings()" title="Presentation settings">⚙</button>
         <button class="btn btn-ghost btn-sm" onclick="cycleTheme()">◑</button>
-        <button class="btn btn-secondary btn-sm" onclick="exportPPTX()">⬇ PPTX</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportPPTX()">↓ PPTX</button>
         <button class="btn btn-primary btn-sm" onclick="publishReveal()">▶ Publish</button>
       </div>
     </div>
@@ -765,8 +767,8 @@ async function openEditor(slug){
           <button class="sp-btn" onclick="insertShape('circle')" title="Ellipse">○</button>
           <button class="sp-btn" onclick="insertShape('triangle')" title="Triangle">△</button>
           <button class="sp-btn" onclick="insertShape('star')" title="Star">★</button>
-          <button class="sp-btn" onclick="insertShape('arrow')" title="Arrow">➜</button>
-          <button class="sp-btn" onclick="insertShape('line')" title="Line">╱</button>
+          <button class="sp-btn" onclick="insertShape('arrow')" title="Arrow">→</button>
+          <button class="sp-btn" onclick="insertShape('line')" title="Line">/</button>
           <button class="sp-btn" onclick="insertShape('diamond')" title="Diamond">◇</button>
         </div>
       </div>
@@ -791,9 +793,9 @@ async function openEditor(slug){
         <span class="csb-icon">□</span><div class="csb-bar" id="stroke-bar" style="background:#000000"></div>
       </button>
       <div class="tb-sep"></div>
-      <button class="tb-btn" data-tip="Align left" onclick="alignObj('left')">⬅</button>
+      <button class="tb-btn" data-tip="Align left" onclick="alignObj('left')">←</button>
       <button class="tb-btn" data-tip="Align center" onclick="alignObj('hcenter')">↔</button>
-      <button class="tb-btn" data-tip="Align right" onclick="alignObj('right')">➡</button>
+      <button class="tb-btn" data-tip="Align right" onclick="alignObj('right')">→</button>
       <div class="tb-sep"></div>
       <button class="tb-btn" data-tip="Zoom out" onclick="changeZoom(-0.1)">−</button>
       <span class="zoom-lbl" id="zoom-lbl" onclick="fitCanvas()">Fit</span>
@@ -1392,9 +1394,9 @@ function updatePropsPanel(){
       <div class="pp-row"><div class="pp-label">Color</div><input class="pp-input" type="color" data-prop="fill" value="${toHex(obj.fill||'#000')}"></div>
       <div class="pp-row"><div class="pp-label">Align</div>
         <div class="pp-grid4" style="flex:1">
-          <button class="pp-icon-btn${obj.textAlign==='left'?' active':''}" data-prop="textAlign" data-val="left">⬅</button>
+          <button class="pp-icon-btn${obj.textAlign==='left'?' active':''}" data-prop="textAlign" data-val="left">←</button>
           <button class="pp-icon-btn${obj.textAlign==='center'?' active':''}" data-prop="textAlign" data-val="center">↔</button>
-          <button class="pp-icon-btn${obj.textAlign==='right'?' active':''}" data-prop="textAlign" data-val="right">➡</button>
+          <button class="pp-icon-btn${obj.textAlign==='right'?' active':''}" data-prop="textAlign" data-val="right">→</button>
           <button class="pp-icon-btn${obj.textAlign==='justify'?' active':''}" data-prop="textAlign" data-val="justify">≡</button>
         </div></div>
       <div class="pp-row"><div class="pp-label">Line H</div><input class="pp-input" type="number" step="0.1" data-prop="lineHeight" value="${obj.lineHeight||1.2}" min="0.5" max="5"></div>
@@ -1423,10 +1425,10 @@ function updatePropsPanel(){
     <div class="pp-section">
       <div class="pp-section-title">Layer</div>
       <div class="pp-grid4">
-        <button class="pp-icon-btn" onclick="doLayer('front')" title="Bring to front">⊤</button>
+        <button class="pp-icon-btn" onclick="doLayer('front')" title="Bring to front">↑↑</button>
         <button class="pp-icon-btn" onclick="doLayer('forward')" title="Bring forward">↑</button>
         <button class="pp-icon-btn" onclick="doLayer('backward')" title="Send backward">↓</button>
-        <button class="pp-icon-btn" onclick="doLayer('back')" title="Send to back">⊥</button>
+        <button class="pp-icon-btn" onclick="doLayer('back')" title="Send to back">↓↓</button>
       </div>
     </div>
     <div class="pp-divider"></div>
