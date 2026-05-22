@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phyto Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs/dist/pptxgen.bundle.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0f1117;--surface:#181c25;--surface2:#1e2330;--border:#272d3d;
+  --text:#e8eaf0;--muted:#6b7280;--muted2:#9ca3af;
+  --accent:#1a535c;--radius:8px;
+  --phytolabs:#1a535c;--tcplants:#52796f;--cp:#2d6a4f;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;font-size:15px;}
+input,textarea,select,button{font-family:inherit;font-size:inherit;}
+button{cursor:pointer;border:none;background:none;}
+a{color:inherit;text-decoration:none;}
+::placeholder{color:var(--muted);}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* ── Auth gate ── */
+#auth-gate{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:2em;}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2.5em 3em;width:100%;max-width:420px;text-align:center;}
+.auth-logo{font-family:'Cormorant Garamond',serif;font-size:2em;font-weight:700;margin-bottom:0.2em;}
+.auth-logo span{color:var(--phytolabs);}
+.auth-sub{color:var(--muted);font-size:0.88em;margin-bottom:2em;}
+.auth-card input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:0.7em 1em;color:var(--text);margin-bottom:0.8em;}
+.auth-card input:focus{border-color:var(--accent);}
+.auth-hint{font-size:0.78em;color:var(--muted);margin-top:1em;line-height:1.6;}
+.auth-hint a{color:var(--muted2);text-decoration:underline;}
+
+/* ── App shell ── */
+#app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+/* ── Header ── */
+.studio-header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:1em;padding:0 1.5em;height:52px;flex-shrink:0;
+}
+.studio-logo{font-family:'Cormorant Garamond',serif;font-size:1.25em;font-weight:700;white-space:nowrap;}
+.studio-logo span{color:var(--phytolabs);}
+.brand-pills{display:flex;gap:0.4em;flex:1;}
+.brand-pill{padding:0.3em 0.9em;border-radius:20px;font-size:0.78em;font-weight:700;border:1.5px solid transparent;color:var(--muted);transition:all 0.15s;}
+.brand-pill:hover{color:var(--text);}
+.brand-pill.active[data-brand=phytolabs]{background:rgba(26,83,92,0.2);border-color:var(--phytolabs);color:#62b6c1;}
+.brand-pill.active[data-brand=tcplants]{background:rgba(82,121,111,0.2);border-color:var(--tcplants);color:#84a98c;}
+.brand-pill.active[data-brand=carnivorousplants]{background:rgba(45,106,79,0.2);border-color:var(--cp);color:#95d5b2;}
+.header-actions{display:flex;gap:0.5em;align-items:center;margin-left:auto;}
+.icon-btn{color:var(--muted);padding:0.4em;border-radius:6px;font-size:1.1em;transition:color 0.15s,background 0.15s;}
+.icon-btn:hover{color:var(--text);background:var(--surface2);}
+
+/* ── Main area ── */
+.studio-main{flex:1;overflow-y:auto;padding:1.8em 2em;}
+
+/* ── List view ── */
+.list-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5em;flex-wrap:wrap;gap:0.8em;}
+.list-toolbar h2{font-family:'Cormorant Garamond',serif;font-size:1.5em;font-weight:600;}
+.toolbar-right{display:flex;gap:0.6em;align-items:center;}
+.select-sm{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:0.35em 0.7em;font-size:0.82em;}
+
+/* ── Cards ── */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.2em;}
+.pres-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color 0.15s,box-shadow 0.15s;}
+.pres-card:hover{border-color:var(--muted);box-shadow:0 4px 16px rgba(0,0,0,0.3);}
+.card-top{height:4px;}
+.card-top.phytolabs{background:var(--phytolabs);}
+.card-top.tcplants{background:var(--tcplants);}
+.card-top.carnivorousplants{background:var(--cp);}
+.card-body{padding:1.1em 1.2em 0.8em;}
+.card-brand-label{font-size:0.7em;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.5em;}
+.card-brand-label.phytolabs{color:var(--phytolabs);}
+.card-brand-label.tcplants{color:var(--tcplants);}
+.card-brand-label.carnivorousplants{color:var(--cp);}
+.card-title{font-family:'Cormorant Garamond',serif;font-size:1.1em;font-weight:600;line-height:1.3;margin-bottom:0.4em;}
+.card-desc{font-size:0.8em;color:var(--muted);line-height:1.5;}
+.card-footer{padding:0.7em 1.2em;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-meta{font-size:0.75em;color:var(--muted);display:flex;gap:0.8em;}
+.card-actions{display:flex;gap:0.4em;}
+.btn-xs{font-size:0.75em;padding:0.3em 0.7em;border-radius:5px;font-weight:600;transition:background 0.15s;}
+.btn-edit{background:var(--surface2);color:var(--text);}
+.btn-edit:hover{background:var(--border);}
+.btn-view{color:#fff;}
+.btn-view.phytolabs{background:var(--phytolabs);}
+.btn-view.tcplants{background:var(--tcplants);}
+.btn-view.carnivorousplants{background:var(--cp);}
+.status-badge{display:inline-block;font-size:0.68em;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;padding:0.2em 0.6em;border-radius:4px;}
+.badge-published{background:rgba(74,222,128,0.15);color:#4ade80;}
+.badge-draft{background:rgba(251,191,36,0.15);color:#fbbf24;}
+.badge-archived{background:rgba(107,114,128,0.15);color:var(--muted);}
+.badge-expired{background:rgba(239,68,68,0.15);color:#f87171;}
+
+/* ── Editor ── */
+.editor-wrap{display:flex;height:calc(100vh - 52px);overflow:hidden;}
+.slide-sidebar{width:200px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.sidebar-header{padding:0.9em 1em;border-bottom:1px solid var(--border);font-size:0.8em;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);}
+.slide-list{flex:1;overflow-y:auto;padding:0.5em;}
+.slide-item{padding:0.55em 0.7em;border-radius:6px;cursor:pointer;font-size:0.82em;display:flex;align-items:center;justify-content:space-between;gap:0.4em;color:var(--muted2);margin-bottom:2px;}
+.slide-item:hover{background:var(--surface2);color:var(--text);}
+.slide-item.active{background:var(--surface2);color:var(--text);font-weight:600;}
+.slide-item-num{font-size:0.75em;color:var(--muted);min-width:1.4em;}
+.slide-item-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.slide-item-actions{display:flex;gap:2px;opacity:0;transition:opacity 0.1s;}
+.slide-item:hover .slide-item-actions{opacity:1;}
+.sidebar-add{padding:0.8em 1em;border-top:1px solid var(--border);}
+.btn-add-slide{width:100%;background:var(--surface2);border:1px dashed var(--border);border-radius:6px;padding:0.5em;color:var(--muted);font-size:0.82em;transition:all 0.15s;}
+.btn-add-slide:hover{border-color:var(--muted);color:var(--text);}
+
+.editor-main{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
+.editor-topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.5em;height:52px;display:flex;align-items:center;gap:1em;flex-shrink:0;}
+.editor-back{color:var(--muted);font-size:0.82em;display:flex;align-items:center;gap:0.3em;}
+.editor-back:hover{color:var(--text);}
+.editor-title{font-family:'Cormorant Garamond',serif;font-size:1.1em;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.editor-actions{display:flex;gap:0.5em;align-items:center;margin-left:auto;}
+.btn-primary{background:var(--accent);color:#fff;padding:0.4em 1em;border-radius:6px;font-size:0.82em;font-weight:700;transition:opacity 0.15s;}
+.btn-primary:hover{opacity:0.85;}
+.btn-secondary{background:var(--surface2);color:var(--text);padding:0.4em 1em;border-radius:6px;font-size:0.82em;font-weight:600;border:1px solid var(--border);transition:background 0.15s;}
+.btn-secondary:hover{background:var(--border);}
+
+.editor-content{padding:1.5em;flex:1;}
+.slide-form{max-width:700px;}
+.form-row{margin-bottom:1.1em;}
+.form-row label{display:block;font-size:0.78em;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4em;}
+.form-row input,.form-row textarea,.form-row select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:0.6em 0.8em;color:var(--text);transition:border-color 0.15s;}
+.form-row input:focus,.form-row textarea:focus,.form-row select:focus{border-color:var(--accent);}
+.form-row textarea{resize:vertical;min-height:70px;}
+.form-row select{background:var(--surface2);}
+.bullet-row{display:flex;gap:0.4em;margin-bottom:0.4em;}
+.bullet-row input{flex:1;}
+.btn-remove{color:var(--muted);padding:0.4em;border-radius:4px;font-size:1em;line-height:1;}
+.btn-remove:hover{color:#f87171;background:rgba(239,68,68,0.1);}
+.btn-add-bullet{font-size:0.78em;color:var(--muted);padding:0.3em 0;display:flex;align-items:center;gap:0.3em;margin-top:0.3em;}
+.btn-add-bullet:hover{color:var(--text);}
+.ai-row{display:flex;gap:0.5em;margin-top:1.2em;padding-top:1.2em;border-top:1px solid var(--border);align-items:center;}
+.ai-label{font-size:0.78em;color:var(--muted);flex:1;}
+.btn-ai{font-size:0.78em;padding:0.4em 0.9em;border-radius:6px;font-weight:600;border:1px solid var(--border);color:var(--text);background:var(--surface2);display:flex;align-items:center;gap:0.3em;transition:all 0.15s;}
+.btn-ai:hover{border-color:var(--muted);background:var(--border);}
+.btn-ai.generating{opacity:0.5;pointer-events:none;}
+
+/* ── Slide mini-preview ── */
+.slide-preview{margin-top:1.5em;border-radius:8px;overflow:hidden;border:1px solid var(--border);}
+.preview-label{padding:0.5em 0.8em;font-size:0.72em;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border);}
+.preview-frame{background:#fff;aspect-ratio:16/9;position:relative;overflow:hidden;font-size:10px;}
+.pf-cover{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1em;}
+.pf-cover h1{font-family:'Cormorant Garamond',serif;font-size:2.2em;font-weight:700;color:#fff;text-align:center;line-height:1.2;}
+.pf-cover p{color:rgba(255,255,255,0.7);margin-top:0.5em;font-size:1.1em;text-align:center;}
+.pf-text{padding:1.5em;height:100%;}
+.pf-text h2{font-family:'Cormorant Garamond',serif;font-size:1.8em;font-weight:600;margin-bottom:0.6em;}
+.pf-text p{font-size:0.95em;color:#444;line-height:1.4;margin-bottom:0.5em;}
+.pf-text ul{padding-left:1.2em;}
+.pf-text li{font-size:0.9em;color:#333;margin-bottom:0.25em;}
+.pf-imgtext{display:grid;grid-template-columns:1fr 1fr;height:100%;}
+.pf-imgtext .img-side{background:#e5e7eb;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:1em;}
+.pf-imgtext .text-side{padding:1.2em;}
+.pf-imgtext img{width:100%;height:100%;object-fit:cover;}
+.pf-grid{padding:1em;}
+.pf-grid h2{font-family:'Cormorant Garamond',serif;font-size:1.5em;margin-bottom:0.5em;}
+.pf-products{display:grid;grid-template-columns:1fr 1fr;gap:0.4em;}
+.pf-product{border-radius:4px;padding:0.5em 0.6em;border-left:3px solid;}
+.pf-product .pn{font-size:0.85em;font-weight:600;}
+.pf-product .pp{font-size:0.78em;font-weight:700;}
+.pf-contact{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1em;}
+.pf-contact h2{font-family:'Cormorant Garamond',serif;font-size:1.8em;color:#fff;margin-bottom:0.6em;}
+.pf-contact p{color:rgba(255,255,255,0.8);font-size:0.9em;line-height:1.9;text-align:center;}
+
+/* ── Modals ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1em;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;}
+.modal-header{padding:1.2em 1.5em;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-header h3{font-family:'Cormorant Garamond',serif;font-size:1.2em;font-weight:600;}
+.modal-body{padding:1.5em;}
+.modal-footer{padding:1em 1.5em;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:0.6em;}
+.layout-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.7em;}
+.layout-opt{background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:0.9em;cursor:pointer;text-align:center;transition:all 0.15s;}
+.layout-opt:hover{border-color:var(--muted);}
+.layout-opt .licon{font-size:1.6em;margin-bottom:0.3em;}
+.layout-opt .lname{font-size:0.8em;font-weight:600;}
+.layout-opt .ldesc{font-size:0.72em;color:var(--muted);margin-top:0.15em;}
+
+/* ── Settings ── */
+.settings-wrap{max-width:560px;}
+.settings-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.4em;margin-bottom:1.2em;}
+.settings-section h3{font-family:'Cormorant Garamond',serif;font-size:1.1em;margin-bottom:1em;}
+.settings-row{margin-bottom:0.9em;}
+.settings-row label{display:block;font-size:0.78em;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4em;}
+.settings-row input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:0.6em 0.8em;color:var(--text);}
+.settings-row input:focus{border-color:var(--accent);}
+.settings-hint{font-size:0.78em;color:var(--muted);line-height:1.6;margin-top:0.8em;}
+.settings-hint code{background:var(--surface2);padding:0.1em 0.4em;border-radius:3px;font-family:monospace;font-size:0.9em;}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:1.5em;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.7em 1.4em;font-size:0.85em;box-shadow:0 4px 20px rgba(0,0,0,0.4);z-index:2000;display:flex;align-items:center;gap:0.5em;white-space:nowrap;}
+.toast.success{border-color:#4ade80;color:#4ade80;}
+.toast.error{border-color:#f87171;color:#f87171;}
+.toast.info{border-color:var(--muted);color:var(--muted2);}
+
+/* ── Misc ── */
+.dirty-dot{width:7px;height:7px;border-radius:50%;background:#fbbf24;display:inline-block;margin-left:0.4em;vertical-align:middle;}
+.empty-state{text-align:center;padding:4em 2em;color:var(--muted);}
+.empty-state h3{font-family:'Cormorant Garamond',serif;font-size:1.4em;color:var(--text);margin-bottom:0.5em;}
+.spinner{display:inline-block;width:1em;height:1em;border:2px solid var(--border);border-top-color:var(--muted);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════
+const REPO = 'shiva16/phyto-studio';
+const GH_API = 'https://api.github.com';
+const GH_PAGES = 'https://shiva16.github.io/phyto-studio';
+
+const BRANDS = {
+  phytolabs: {
+    label:'Phyto Labs', site:'phytolabs.in',
+    color:'#1a535c', dark:'#0d2b30', light:'#62b6c1', pale:'#e8f4f6',
+    ctx:'plant science laboratory offering tissue culture media (MS Medium, BAP, NAA, GA3, IBA, TC Agar), lab consultation, protocol development, full lab setup, and lab management software for researchers, nurseries, and agri-businesses across India'
+  },
+  tcplants: {
+    label:'TC Plants', site:'tcplants.in',
+    color:'#52796f', dark:'#2f3e46', light:'#84a98c', pale:'#edf3ef',
+    ctx:"tissue culture plant nursery producing lab-grown, disease-free plants including Nepenthes ventricosa, Nepenthes alata, Musa nono (banana TC), Venus Fly Trap for commercial and retail customers across India"
+  },
+  carnivorousplants: {
+    label:'Carnivorous Plants', site:'carnivorousplants.in',
+    color:'#2d6a4f', dark:'#1b4332', light:'#95d5b2', pale:'#edf7f1',
+    ctx:"India's exclusive carnivorous plant retailer selling Nepenthes, Sarracenia purpurea, Dionaea muscipula, Drosera capensis, Cephalotus follicularis, Pinguicula moranensis to collectors and hobbyists"
+  }
+};
+
+const LAYOUTS = {
+  cover:        { label:'Cover',         icon:'🎯', desc:'Title slide' },
+  'text-only':  { label:'Text & Bullets',icon:'📝', desc:'Heading + bullets' },
+  'image-text': { label:'Image + Text',  icon:'🖼️', desc:'Split layout' },
+  'product-grid':{ label:'Product Grid', icon:'🛒', desc:'4 product cards' },
+  contact:      { label:'Contact',       icon:'📬', desc:'Final CTA slide' },
+};
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let S = {
+  pat: sessionStorage.getItem('ps_pat') || '',
+  workerUrl: localStorage.getItem('ps_worker') || '',
+  brand: 'phytolabs',
+  view: 'list',           // 'list' | 'editor' | 'settings'
+  presentations: [],
+  catalogueSha: '',
+  current: null,          // presentation meta being edited
+  slides: [],             // slide data for current presentation
+  presentationSha: '',    // sha of data/presentations/[slug].json
+  activeSlide: 0,
+  dirty: false,
+  loading: false,
+  saving: false,
+  generating: false,
+  modal: null,            // 'new' | 'add-slide' | null
+  newForm: { title:'', project:'', description:'', expires:'', brief:'' },
+  filterStatus: 'all',
+  toast: null,
+};
+
+// ═══════════════════════════════════════════════════════
+// GITHUB API
+// ═══════════════════════════════════════════════════════
+async function ghGet(path) {
+  const r = await fetch(`${GH_API}/repos/${REPO}/contents/${path}`, {
+    headers: { Authorization:`Bearer ${S.pat}`, Accept:'application/vnd.github.v3+json' }
+  });
+  if (!r.ok) { if (r.status === 404) return null; throw new Error(await r.text()); }
+  return r.json();
+}
+
+async function ghPut(path, content, message, sha) {
+  const body = { message, content: btoa(unescape(encodeURIComponent(content))) };
+  if (sha) body.sha = sha;
+  const r = await fetch(`${GH_API}/repos/${REPO}/contents/${path}`, {
+    method:'PUT',
+    headers:{ Authorization:`Bearer ${S.pat}`, Accept:'application/vnd.github.v3+json', 'Content-Type':'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+function ghDecode(file) {
+  return decodeURIComponent(escape(atob(file.content.replace(/\s/g,''))));
+}
+
+async function loadCatalogue() {
+  const file = await ghGet('data/catalogue.json');
+  if (!file) { S.presentations = []; S.catalogueSha = ''; return; }
+  const data = JSON.parse(ghDecode(file));
+  S.presentations = data.presentations || [];
+  S.catalogueSha = file.sha;
+}
+
+async function saveCatalogue() {
+  const content = JSON.stringify({ presentations: S.presentations }, null, 2);
+  const res = await ghPut('data/catalogue.json', content, `Update catalogue index`, S.catalogueSha);
+  S.catalogueSha = res.content.sha;
+}
+
+async function loadPresentation(slug) {
+  const file = await ghGet(`data/presentations/${slug}.json`);
+  if (!file) { S.slides = [defaultSlide('cover')]; S.presentationSha = ''; return; }
+  const data = JSON.parse(ghDecode(file));
+  S.slides = data.slides || [defaultSlide('cover')];
+  S.presentationSha = file.sha;
+}
+
+async function savePresentation() {
+  const slug = S.current.slug;
+  const content = JSON.stringify({ slides: S.slides }, null, 2);
+  const res = await ghPut(`data/presentations/${slug}.json`, content, `Save ${slug}`, S.presentationSha || undefined);
+  S.presentationSha = res.content.sha;
+}
+
+// ═══════════════════════════════════════════════════════
+// AI
+// ═══════════════════════════════════════════════════════
+async function aiCall(messages, model = 'fast') {
+  if (!S.workerUrl) throw new Error('AI Worker URL not configured. Set it in Settings.');
+  const r = await fetch(`${S.workerUrl}/generate`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ messages, model })
+  });
+  if (!r.ok) throw new Error(`Worker error ${r.status}`);
+  const data = await r.json();
+  const text = data.choices?.[0]?.message?.content;
+  if (!text) throw new Error('Empty AI response');
+  return JSON.parse(text);
+}
+
+async function generateFullDeck(brief) {
+  const brand = BRANDS[S.brand];
+  const messages = [
+    { role:'system', content:`You are a professional marketing copywriter for ${brand.label}, a ${brand.ctx}. Return ONLY valid JSON, no extra text.` },
+    { role:'user', content:`Create a presentation about: "${brief}". Return a JSON object with a "slides" array. Each slide has "layout" (one of: cover, text-only, image-text, product-grid, contact) and "data" object.
+
+For cover: {"title":"...","subtitle":"..."}
+For text-only: {"heading":"...","body":"...","bullets":["...","..."]}
+For image-text: {"heading":"...","image":"","bullets":["...","..."]}
+For product-grid: {"heading":"...","products":[{"name":"...","price":"...","desc":"..."},{"name":"...","price":"...","desc":"..."},{"name":"...","price":"...","desc":"..."},{"name":"...","price":"...","desc":"..."}]}
+For contact: {"heading":"Get in Touch","email":"info@${brand.site}","phone":"","website":"${brand.site}","address":"Thaiyur, OMR, Chennai"}
+
+Create 5-8 slides, starting with cover, ending with contact. Make it professional and specific to the brand.` }
+  ];
+  return aiCall(messages, 'quality');
+}
+
+async function generateSlideContent(slide) {
+  const brand = BRANDS[S.brand];
+  const layoutInfo = LAYOUTS[slide.layout];
+  const messages = [
+    { role:'system', content:`You are a marketing copywriter for ${brand.label}, a ${brand.ctx}. Return ONLY valid JSON.` },
+    { role:'user', content:`Write content for a "${layoutInfo.label}" slide. Return JSON with a "data" object matching this layout.
+
+Layout: ${slide.layout}
+${slide.layout === 'cover' ? 'Fields: title, subtitle' : ''}
+${slide.layout === 'text-only' ? 'Fields: heading, body (1-2 sentences), bullets (3-5 items)' : ''}
+${slide.layout === 'image-text' ? 'Fields: heading, image (leave empty string), bullets (3-4 items)' : ''}
+${slide.layout === 'product-grid' ? 'Fields: heading, products array with 4 items each having name, price (in ₹), desc' : ''}
+${slide.layout === 'contact' ? `Fields: heading, email (info@${brand.site}), phone, website (${brand.site}), address (Thaiyur OMR Chennai)` : ''}
+
+Keep it professional and relevant to ${brand.label}.` }
+  ];
+  return aiCall(messages, 'fast');
+}
+
+// ═══════════════════════════════════════════════════════
+// SLIDE HELPERS
+// ═══════════════════════════════════════════════════════
+function defaultSlide(layout) {
+  const d = {
+    cover:         { title:'', subtitle:'' },
+    'text-only':   { heading:'', body:'', bullets:['',''] },
+    'image-text':  { heading:'', image:'', bullets:['',''] },
+    'product-grid':{ heading:'Products', products:[{name:'',price:'',desc:''},{name:'',price:'',desc:''},{name:'',price:'',desc:''},{name:'',price:'',desc:''}] },
+    contact:       { heading:'Get in Touch', email:'', phone:'', website:'', address:'' },
+  };
+  return { id: Date.now()+'', layout, data: d[layout] || {} };
+}
+
+function slideLabel(slide, idx) {
+  const d = slide.data;
+  const t = d.title || d.heading || LAYOUTS[slide.layout]?.label || slide.layout;
+  return `${idx+1}. ${t || LAYOUTS[slide.layout]?.label}`;
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function slugify(s) {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60);
+}
+
+function statusBadge(p) {
+  if (p.status === 'archived') return '<span class="status-badge badge-archived">Archived</span>';
+  if (p.status === 'draft') return '<span class="status-badge badge-draft">Draft</span>';
+  if (p.expires && new Date(p.expires) < new Date()) return '<span class="status-badge badge-expired">Expired</span>';
+  return '<span class="status-badge badge-published">Published</span>';
+}
+
+// ═══════════════════════════════════════════════════════
+// REVEAL.JS HTML GENERATOR
+// ═══════════════════════════════════════════════════════
+function generateRevealHTML(meta, slides) {
+  const brand = BRANDS[meta.brand];
+
+  function slideHTML(slide) {
+    const d = slide.data;
+    switch (slide.layout) {
+      case 'cover':
+        return `<section class="cover-slide center-slide">
+  <div class="cover-logo">${esc(brand.label)} — ${esc(brand.site)}</div>
+  <h1>${esc(d.title)}</h1>
+  <p class="sub">${esc(d.subtitle)}</p>
+</section>`;
+      case 'text-only':
+        return `<section>
+  <h2>${esc(d.heading)}</h2>
+  ${d.body ? `<p style="color:#555;font-size:0.9em;margin-bottom:0.8em;">${esc(d.body)}</p>` : ''}
+  ${(d.bullets||[]).filter(Boolean).length ? `<ul>${(d.bullets||[]).filter(Boolean).map(b=>`<li>${esc(b)}</li>`).join('')}</ul>` : ''}
+</section>`;
+      case 'image-text':
+        return `<section>
+  <div class="r-hstack" style="gap:2em;align-items:center;">
+    ${d.image ? `<img src="${esc(d.image)}" style="width:45%;border-radius:8px;object-fit:cover;max-height:340px;">` : `<div style="width:45%;height:280px;background:var(--brand-pale);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--brand);font-size:0.8em;">Image</div>`}
+    <div style="flex:1;">
+      <h2>${esc(d.heading)}</h2>
+      ${(d.bullets||[]).filter(Boolean).length ? `<ul style="margin-top:0.8em;">${(d.bullets||[]).filter(Boolean).map(b=>`<li>${esc(b)}</li>`).join('')}</ul>` : ''}
+    </div>
+  </div>
+</section>`;
+      case 'product-grid':
+        return `<section>
+  <h2>${esc(d.heading||'Products')}</h2>
+  <div class="product-grid" style="margin-top:0.8em;">
+    ${(d.products||[]).map(p=>`<div class="product-card">
+      <div class="pname">${esc(p.name)}</div>
+      <div class="pprice">${esc(p.price)}</div>
+      <div class="pdesc">${esc(p.desc)}</div>
+    </div>`).join('')}
+  </div>
+</section>`;
+      case 'contact':
+        return `<section class="contact-slide center-slide">
+  <h2>${esc(d.heading||'Get in Touch')}</h2>
+  <div class="info">
+    ${d.email ? `<div>📧 <a href="mailto:${esc(d.email)}">${esc(d.email)}</a></div>` : ''}
+    ${d.phone ? `<div>📞 ${esc(d.phone)}</div>` : ''}
+    ${d.website ? `<div>🌐 <a href="https://${esc(d.website)}" target="_blank">${esc(d.website)}</a></div>` : ''}
+    ${d.address ? `<div>📍 ${esc(d.address)}</div>` : ''}
+  </div>
+</section>`;
+      default: return `<section><h2>${esc(slide.layout)}</h2></section>`;
+    }
+  }
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${esc(meta.title)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Nunito:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css">
+<style>
+:root{--brand:${brand.color};--brand-dark:${brand.dark};--brand-light:${brand.light};--brand-pale:${brand.pale};}
+.reveal{font-family:'Nunito',sans-serif;}
+.reveal h1,.reveal h2,.reveal h3{font-family:'Cormorant Garamond',serif;color:var(--brand-dark);text-transform:none;letter-spacing:-0.02em;}
+.reveal h1{font-size:2.4em;}.reveal h2{font-size:1.8em;}
+.reveal .slides section{text-align:left;}
+.reveal .slides section.center-slide{text-align:center;}
+.cover-slide{background:var(--brand-dark)!important;color:#fff!important;}
+.cover-slide h1{color:#fff;font-size:2.5em;margin-bottom:0.2em;}
+.cover-slide .sub{color:var(--brand-light);font-size:1.1em;}
+.cover-logo{font-family:'Cormorant Garamond',serif;font-size:0.85em;color:rgba(255,255,255,0.4);margin-bottom:2em;letter-spacing:0.1em;text-transform:uppercase;}
+.product-grid{display:grid;grid-template-columns:1fr 1fr;gap:1em;margin-top:0.8em;}
+.product-card{background:var(--brand-pale);border-left:4px solid var(--brand);border-radius:6px;padding:0.9em 1.1em;}
+.product-card .pname{font-family:'Cormorant Garamond',serif;font-size:1.1em;font-weight:600;color:var(--brand-dark);}
+.product-card .pprice{font-size:0.95em;font-weight:700;color:var(--brand);margin:0.2em 0;}
+.product-card .pdesc{font-size:0.78em;color:#555;}
+.contact-slide{background:var(--brand)!important;color:#fff!important;text-align:center;}
+.contact-slide h2{color:#fff;}
+.contact-slide .info{font-size:0.95em;color:rgba(255,255,255,0.85);line-height:2.2;}
+.contact-slide .info a{color:var(--brand-light);text-decoration:none;}
+ul{padding-left:1.2em;}li{margin-bottom:0.4em;font-size:0.9em;}
+#ps-bar{position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-between;padding:0 1.5em;height:44px;font-family:'Nunito',sans-serif;font-size:0.8em;color:rgba(255,255,255,0.6);}
+#ps-bar .logo{color:#fff;font-family:'Cormorant Garamond',serif;font-size:1.2em;}
+#ps-bar a{color:rgba(255,255,255,0.55);text-decoration:none;}
+#ps-bar a:hover{color:#fff;}
+.reveal .slides{margin-top:44px;}
+</style>
+</head>
+<body>
+<div id="ps-bar">
+  <span class="logo">🌿 Phyto Studio</span>
+  <span>${esc(meta.title)}</span>
+  <a href="${GH_PAGES}/catalogue/">← All Catalogues</a>
+</div>
+<div class="reveal"><div class="slides">
+${slides.map(slideHTML).join('\n')}
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"><\/script>
+<script>
+Reveal.initialize({hash:true,transition:'slide',controls:true,progress:true,slideNumber:false,touch:true,overview:true,margin:0.06});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&(e.key==='p'||e.key==='s'))e.preventDefault();});
+<\/script>
+</body>
+</html>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// PPTX EXPORT
+// ═══════════════════════════════════════════════════════
+async function downloadPPTX(meta, slides) {
+  const pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_WIDE';
+  pptx.title = meta.title;
+  const brand = BRANDS[meta.brand];
+  const bHex = brand.color.replace('#','');
+  const dHex = brand.dark.replace('#','');
+
+  for (const slide of slides) {
+    const s = pptx.addSlide();
+    const d = slide.data;
+    switch (slide.layout) {
+      case 'cover':
+        s.background = { color: dHex };
+        s.addText(brand.label.toUpperCase(), { x:0.5,y:0.8,w:9,h:0.5,fontSize:11,color:'AAAAAA',align:'center',charSpacing:3 });
+        s.addText(d.title||'', { x:0.5,y:1.6,w:9,h:1.8,fontSize:40,bold:true,color:'FFFFFF',align:'center',fontFace:'Georgia' });
+        s.addText(d.subtitle||'', { x:0.5,y:3.5,w:9,h:0.8,fontSize:20,color:'BBBBBB',align:'center' });
+        break;
+      case 'text-only':
+        s.addText(d.heading||'', { x:0.5,y:0.4,w:9,h:0.9,fontSize:28,bold:true,color:dHex,fontFace:'Georgia' });
+        if (d.body) s.addText(d.body, { x:0.5,y:1.4,w:9,h:0.9,fontSize:15,color:'555555' });
+        const bullets = (d.bullets||[]).filter(Boolean);
+        if (bullets.length) {
+          s.addText(bullets.map(b=>({text:b,options:{bullet:{type:'bullet'},paraSpaceAfter:6}})), { x:0.6,y:d.body?2.4:1.6,w:8.8,h:3,fontSize:15,color:'333333' });
+        }
+        break;
+      case 'image-text':
+        s.addText(d.heading||'', { x:5.2,y:0.5,w:4.5,h:0.8,fontSize:22,bold:true,color:dHex,fontFace:'Georgia' });
+        if (d.image) { try { s.addImage({ path:d.image,x:0.3,y:0.5,w:4.5,h:4.5 }); } catch(_){} }
+        else { s.addShape(pptx.ShapeType.rect,{x:0.3,y:0.5,w:4.5,h:4.5,fill:{color:'EEEEEE'}}); }
+        const ib = (d.bullets||[]).filter(Boolean);
+        if (ib.length) s.addText(ib.map(b=>({text:b,options:{bullet:{type:'bullet'},paraSpaceAfter:8}})), { x:5.2,y:1.5,w:4.5,h:3.5,fontSize:14,color:'333333' });
+        break;
+      case 'product-grid':
+        s.addText(d.heading||'Products', { x:0.5,y:0.3,w:9,h:0.7,fontSize:24,bold:true,color:dHex,fontFace:'Georgia' });
+        (d.products||[]).slice(0,4).forEach((p,i)=>{
+          const x = i%2===0?0.3:5.0, y = i<2?1.1:3.1;
+          s.addShape(pptx.ShapeType.rect,{x,y,w:4.5,h:1.8,fill:{color:brand.pale.replace('#','')},line:{color:bHex,width:3}});
+          s.addText(p.name||'', { x:x+0.2,y:y+0.1,w:4.1,h:0.5,fontSize:14,bold:true,color:dHex });
+          s.addText(p.price||'', { x:x+0.2,y:y+0.55,w:4.1,h:0.4,fontSize:13,bold:true,color:bHex });
+          s.addText(p.desc||'', { x:x+0.2,y:y+0.95,w:4.1,h:0.7,fontSize:11,color:'555555' });
+        });
+        break;
+      case 'contact':
+        s.background = { color: bHex };
+        s.addText(d.heading||'Get in Touch', { x:0.5,y:1.2,w:9,h:1,fontSize:32,bold:true,color:'FFFFFF',align:'center',fontFace:'Georgia' });
+        const lines = [d.email,d.phone,d.website,d.address].filter(Boolean).join('  ·  ');
+        s.addText(lines, { x:0.5,y:2.5,w:9,h:1.2,fontSize:15,color:'DDDDDD',align:'center' });
+        break;
+    }
+  }
+  await pptx.writeFile({ fileName:`${meta.slug}.pptx` });
+}
+
+function openPDF(slug) {
+  const url = `${GH_PAGES}/view/${slug}/?print-pdf`;
+  const win = window.open(url,'_blank');
+  if (win) setTimeout(()=>win.print(), 2000);
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════
+function toast(msg, type='info', ms=3000) {
+  S.toast = { msg, type };
+  render();
+  setTimeout(()=>{ S.toast=null; render(); }, ms);
+}
+
+function render() {
+  const root = document.getElementById('root');
+  if (!S.pat) { root.innerHTML = renderAuth(); return; }
+  root.innerHTML = `
+    <div id="app">
+      ${S.view === 'editor' ? renderEditorShell() : `
+        <div class="studio-header">
+          <span class="studio-logo">🌿 Phyto <span>Studio</span></span>
+          <div class="brand-pills">
+            ${Object.entries(BRANDS).map(([k,v])=>`
+              <button class="brand-pill ${S.brand===k?'active':''}" data-brand="${k}" data-action="setBrand">${v.label}</button>
+            `).join('')}
+          </div>
+          <div class="header-actions">
+            <button class="icon-btn" data-action="openSettings" title="Settings">⚙️</button>
+            <button class="icon-btn" data-action="lock" title="Lock">🔒</button>
+          </div>
+        </div>
+        <div class="studio-main">
+          ${S.view === 'settings' ? renderSettings() : renderList()}
+        </div>
+      `}
+    </div>
+    ${S.modal ? renderModal() : ''}
+    ${S.toast ? `<div class="toast ${S.toast.type}">${S.toast.msg}</div>` : ''}
+  `;
+}
+
+function renderAuth() {
+  return `
+    <div id="auth-gate">
+      <div class="auth-card">
+        <div class="auth-logo">🌿 Phyto <span>Studio</span></div>
+        <div class="auth-sub">Marketing &amp; Content Studio — Phyto Evolution Pvt. Ltd.</div>
+        <input type="password" id="pat-input" placeholder="GitHub Personal Access Token" autocomplete="off">
+        <button class="btn-primary" style="width:100%;padding:0.65em;" data-action="login">Enter Studio</button>
+        <div class="auth-hint">
+          Your token is stored in session memory only — never saved to disk.<br>
+          Need a token? <a href="https://github.com/settings/tokens/new?scopes=repo&description=PhytoStudio" target="_blank">Create one here</a> (repo scope required).
+        </div>
+      </div>
+    </div>
+    ${S.toast ? `<div class="toast ${S.toast.type}">${S.toast.msg}</div>` : ''}
+  `;
+}
+
+function renderList() {
+  const brand = BRANDS[S.brand];
+  const filtered = S.presentations.filter(p => {
+    if (p.brand !== S.brand) return false;
+    if (S.filterStatus === 'published') return p.status === 'published';
+    if (S.filterStatus === 'draft') return p.status === 'draft';
+    if (S.filterStatus === 'archived') return p.status === 'archived';
+    return true;
+  }).sort((a,b)=>new Date(b.updated||b.created)-new Date(a.updated||a.created));
+
+  return `
+    <div class="list-toolbar">
+      <h2 style="color:${brand.color}">${brand.label}</h2>
+      <div class="toolbar-right">
+        <select class="select-sm" data-action="filterStatus">
+          <option value="all" ${S.filterStatus==='all'?'selected':''}>All status</option>
+          <option value="published" ${S.filterStatus==='published'?'selected':''}>Published</option>
+          <option value="draft" ${S.filterStatus==='draft'?'selected':''}>Draft</option>
+          <option value="archived" ${S.filterStatus==='archived'?'selected':''}>Archived</option>
+        </select>
+        <button class="btn-primary" data-action="newPresentation">+ New Presentation</button>
+      </div>
+    </div>
+    ${S.loading ? '<div class="empty-state"><div class="spinner"></div></div>' :
+      filtered.length === 0 ? `
+        <div class="empty-state">
+          <h3>No presentations yet</h3>
+          <p>Create your first presentation for ${brand.label}</p>
+        </div>` :
+      `<div class="cards-grid">
+        ${filtered.map(p=>`
+          <div class="pres-card">
+            <div class="card-top ${p.brand}"></div>
+            <div class="card-body">
+              <div class="card-brand-label ${p.brand}">${BRANDS[p.brand]?.label||p.brand}</div>
+              <div class="card-title">${esc(p.title)}</div>
+              <div class="card-desc">${esc(p.description||'')}</div>
+            </div>
+            <div class="card-footer">
+              <div class="card-meta">
+                ${statusBadge(p)}
+                <span>${p.slideCount||0} slides</span>
+                ${p.project?`<span>${esc(p.project)}</span>`:''}
+              </div>
+              <div class="card-actions">
+                <button class="btn-xs btn-edit" data-action="editPres" data-slug="${p.slug}">Edit</button>
+                <button class="btn-xs btn-view ${p.brand}" data-action="viewPres" data-slug="${p.slug}">View →</button>
+              </div>
+            </div>
+          </div>`).join('')}
+      </div>`}
+  `;
+}
+
+function renderEditorShell() {
+  const slide = S.slides[S.activeSlide];
+  return `
+    <div class="editor-wrap">
+      <div class="slide-sidebar">
+        <div class="sidebar-header">Slides</div>
+        <div class="slide-list">
+          ${S.slides.map((sl,i)=>`
+            <div class="slide-item ${i===S.activeSlide?'active':''}" data-action="selectSlide" data-idx="${i}">
+              <span class="slide-item-num">${i+1}</span>
+              <span class="slide-item-label">${esc(sl.data?.title||sl.data?.heading||LAYOUTS[sl.layout]?.label||sl.layout)}</span>
+              <span class="slide-item-actions">
+                ${i>0?`<button class="icon-btn" style="font-size:0.75em;padding:2px 4px;" data-action="slideUp" data-idx="${i}" title="Move up">↑</button>`:''}
+                ${i<S.slides.length-1?`<button class="icon-btn" style="font-size:0.75em;padding:2px 4px;" data-action="slideDown" data-idx="${i}" title="Move down">↓</button>`:''}
+                <button class="icon-btn" style="font-size:0.75em;padding:2px 4px;color:#f87171;" data-action="deleteSlide" data-idx="${i}" title="Delete">✕</button>
+              </span>
+            </div>`).join('')}
+        </div>
+        <div class="sidebar-add">
+          <button class="btn-add-slide" data-action="addSlide">+ Add Slide</button>
+        </div>
+      </div>
+      <div class="editor-main">
+        <div class="editor-topbar">
+          <button class="editor-back" data-action="backToList">← Back</button>
+          <span class="editor-title">${esc(S.current?.title||'')}${S.dirty?'<span class="dirty-dot"></span>':''}</span>
+          <div class="editor-actions">
+            <button class="btn-secondary" data-action="previewPres">Preview</button>
+            <button class="btn-secondary" data-action="savePres" ${S.saving?'disabled':''}>
+              ${S.saving?'<span class="spinner"></span> Saving…':'Save'}
+            </button>
+            <button class="btn-secondary" data-action="downloadPPTX">PPTX ↓</button>
+            <button class="btn-secondary" data-action="downloadPDF">PDF ↓</button>
+            <button class="btn-primary" data-action="publishPres" ${S.saving?'disabled':''}>
+              ${S.saving?'<span class="spinner"></span>':'Publish ↑'}
+            </button>
+          </div>
+        </div>
+        <div class="editor-content">
+          ${slide ? renderSlideForm(slide) : '<div class="empty-state"><h3>No slides</h3><p>Add a slide to get started</p></div>'}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderSlideForm(slide) {
+  const d = slide.data;
+  const brand = BRANDS[S.brand];
+  return `
+    <div class="slide-form">
+      <div class="form-row">
+        <label>Layout</label>
+        <select data-action="changeLayout">
+          ${Object.entries(LAYOUTS).map(([k,v])=>`<option value="${k}" ${slide.layout===k?'selected':''}>${v.label}</option>`).join('')}
+        </select>
+      </div>
+      ${renderLayoutFields(slide)}
+      <div class="ai-row">
+        <span class="ai-label">✨ Generate content with AI</span>
+        <button class="btn-ai ${S.generating?'generating':''}" data-action="aiSlide" data-model="fast">
+          ${S.generating?'<span class="spinner"></span>':'⚡'} Fast (8B)
+        </button>
+        <button class="btn-ai ${S.generating?'generating':''}" data-action="aiSlide" data-model="quality">
+          ${S.generating?'<span class="spinner"></span>':'🎯'} Quality (70B)
+        </button>
+      </div>
+      ${renderSlidePreview(slide, brand)}
+    </div>
+  `;
+}
+
+function renderLayoutFields(slide) {
+  const d = slide.data;
+  switch (slide.layout) {
+    case 'cover':
+      return `
+        <div class="form-row"><label>Title</label><input type="text" data-field="title" value="${esc(d.title||'')}"></div>
+        <div class="form-row"><label>Subtitle</label><input type="text" data-field="subtitle" value="${esc(d.subtitle||'')}"></div>`;
+    case 'text-only':
+      return `
+        <div class="form-row"><label>Heading</label><input type="text" data-field="heading" value="${esc(d.heading||'')}"></div>
+        <div class="form-row"><label>Body text</label><textarea data-field="body">${esc(d.body||'')}</textarea></div>
+        <div class="form-row">
+          <label>Bullet Points</label>
+          ${(d.bullets||[]).map((b,i)=>`
+            <div class="bullet-row">
+              <input type="text" data-field="bullet" data-idx="${i}" value="${esc(b)}">
+              <button class="btn-remove" data-action="removeBullet" data-idx="${i}">×</button>
+            </div>`).join('')}
+          <button class="btn-add-bullet" data-action="addBullet">+ Add bullet</button>
+        </div>`;
+    case 'image-text':
+      return `
+        <div class="form-row"><label>Heading</label><input type="text" data-field="heading" value="${esc(d.heading||'')}"></div>
+        <div class="form-row"><label>Image URL</label><input type="url" data-field="image" placeholder="https://..." value="${esc(d.image||'')}"></div>
+        <div class="form-row">
+          <label>Bullet Points</label>
+          ${(d.bullets||[]).map((b,i)=>`
+            <div class="bullet-row">
+              <input type="text" data-field="bullet" data-idx="${i}" value="${esc(b)}">
+              <button class="btn-remove" data-action="removeBullet" data-idx="${i}">×</button>
+            </div>`).join('')}
+          <button class="btn-add-bullet" data-action="addBullet">+ Add bullet</button>
+        </div>`;
+    case 'product-grid':
+      return `
+        <div class="form-row"><label>Section Heading</label><input type="text" data-field="heading" value="${esc(d.heading||'Products')}"></div>
+        ${(d.products||[]).map((p,i)=>`
+          <div class="form-row" style="background:var(--surface2);border-radius:6px;padding:0.8em;margin-bottom:0.6em;">
+            <label>Product ${i+1}</label>
+            <input type="text" data-pfield="name" data-pidx="${i}" placeholder="Product name" value="${esc(p.name||'')}" style="margin-bottom:0.4em;">
+            <input type="text" data-pfield="price" data-pidx="${i}" placeholder="Price (e.g. ₹1,200)" value="${esc(p.price||'')}" style="margin-bottom:0.4em;">
+            <input type="text" data-pfield="desc" data-pidx="${i}" placeholder="Short description" value="${esc(p.desc||'')}">
+          </div>`).join('')}`;
+    case 'contact':
+      return `
+        <div class="form-row"><label>Heading</label><input type="text" data-field="heading" value="${esc(d.heading||'Get in Touch')}"></div>
+        <div class="form-row"><label>Email</label><input type="email" data-field="email" value="${esc(d.email||'')}"></div>
+        <div class="form-row"><label>Phone</label><input type="tel" data-field="phone" value="${esc(d.phone||'')}"></div>
+        <div class="form-row"><label>Website</label><input type="text" data-field="website" value="${esc(d.website||'')}"></div>
+        <div class="form-row"><label>Address</label><input type="text" data-field="address" value="${esc(d.address||'')}"></div>`;
+    default: return '';
+  }
+}
+
+function renderSlidePreview(slide, brand) {
+  const d = slide.data;
+  let inner = '';
+  switch (slide.layout) {
+    case 'cover':
+      inner = `<div class="pf-cover" style="background:${brand.dark}">
+        <h1>${esc(d.title||'Title')}</h1>
+        <p>${esc(d.subtitle||'Subtitle')}</p>
+      </div>`;
+      break;
+    case 'text-only':
+      inner = `<div class="pf-text">
+        <h2 style="color:${brand.dark}">${esc(d.heading||'Heading')}</h2>
+        ${d.body?`<p>${esc(d.body)}</p>`:''}
+        <ul>${(d.bullets||[]).filter(Boolean).map(b=>`<li style="color:#333">${esc(b)}</li>`).join('')}</ul>
+      </div>`;
+      break;
+    case 'image-text':
+      inner = `<div class="pf-imgtext">
+        <div class="img-side">${d.image?`<img src="${esc(d.image)}" alt="">`:'📷 Image'}</div>
+        <div class="text-side">
+          <h2 style="color:${brand.dark};font-family:'Cormorant Garamond',serif;font-size:1.6em;margin-bottom:0.5em">${esc(d.heading||'Heading')}</h2>
+          <ul>${(d.bullets||[]).filter(Boolean).map(b=>`<li style="color:#333;font-size:0.9em;margin-bottom:0.25em">${esc(b)}</li>`).join('')}</ul>
+        </div>
+      </div>`;
+      break;
+    case 'product-grid':
+      inner = `<div class="pf-grid">
+        <h2 style="color:${brand.dark}">${esc(d.heading||'Products')}</h2>
+        <div class="pf-products">
+          ${(d.products||[]).map(p=>`<div class="pf-product" style="background:${brand.pale};border-color:${brand.color}">
+            <div class="pn" style="color:${brand.dark}">${esc(p.name||'Product')}</div>
+            <div class="pp" style="color:${brand.color}">${esc(p.price||'₹0')}</div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+      break;
+    case 'contact':
+      inner = `<div class="pf-contact" style="background:${brand.color}">
+        <h2>${esc(d.heading||'Get in Touch')}</h2>
+        <p>${[d.email,d.phone,d.website].filter(Boolean).map(x=>esc(x)).join('<br>')}</p>
+      </div>`;
+      break;
+  }
+  return `<div class="slide-preview"><div class="preview-label">Preview</div><div class="preview-frame">${inner}</div></div>`;
+}
+
+function renderModal() {
+  if (S.modal === 'new') {
+    const f = S.newForm;
+    return `
+      <div class="modal-overlay" data-action="closeModal">
+        <div class="modal" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <h3>New Presentation</h3>
+            <button class="icon-btn" data-action="closeModal">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-row">
+              <label>Brand</label>
+              <select data-modal-field="brand">
+                ${Object.entries(BRANDS).map(([k,v])=>`<option value="${k}" ${S.brand===k?'selected':''}>${v.label}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-row"><label>Title *</label><input type="text" data-modal-field="title" placeholder="e.g. Lab Services 2026" value="${esc(f.title)}"></div>
+            <div class="form-row"><label>Project / Campaign</label><input type="text" data-modal-field="project" placeholder="e.g. Q2 Marketing" value="${esc(f.project)}"></div>
+            <div class="form-row"><label>Description</label><input type="text" data-modal-field="description" placeholder="Brief description for the archive" value="${esc(f.description)}"></div>
+            <div class="form-row"><label>Expires (optional)</label><input type="date" data-modal-field="expires" value="${esc(f.expires)}"></div>
+            <div class="form-row"><label>Content Brief (for AI generation)</label>
+              <textarea data-modal-field="brief" placeholder="e.g. Full overview of our TC media products and lab services for B2B customers">${esc(f.brief)}</textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" data-action="closeModal">Cancel</button>
+            <button class="btn-secondary" data-action="createEmpty">Create Empty</button>
+            <button class="btn-primary" data-action="createWithAI" ${!f.brief?'disabled title="Add a brief first"':''}>✨ Generate with AI</button>
+          </div>
+        </div>
+      </div>`;
+  }
+  if (S.modal === 'add-slide') {
+    return `
+      <div class="modal-overlay" data-action="closeModal">
+        <div class="modal" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <h3>Add Slide</h3>
+            <button class="icon-btn" data-action="closeModal">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="layout-grid">
+              ${Object.entries(LAYOUTS).map(([k,v])=>`
+                <div class="layout-opt" data-action="addSlideLayout" data-layout="${k}">
+                  <div class="licon">${v.icon}</div>
+                  <div class="lname">${v.label}</div>
+                  <div class="ldesc">${v.desc}</div>
+                </div>`).join('')}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+  return '';
+}
+
+function renderSettings() {
+  return `
+    <div class="settings-wrap">
+      <div class="list-toolbar"><h2>Settings</h2></div>
+      <div class="settings-section">
+        <h3>AI Worker</h3>
+        <div class="settings-row">
+          <label>Cloudflare Worker URL</label>
+          <input type="url" id="worker-url-input" placeholder="https://phyto-studio.your-account.workers.dev" value="${esc(S.workerUrl)}">
+        </div>
+        <button class="btn-primary" data-action="saveWorkerUrl" style="margin-top:0.5em;">Save</button>
+        <div class="settings-hint">
+          Deploy the worker from <code>worker/</code> in the repo. Once deployed, your URL will look like<br>
+          <code>https://phyto-studio.{account}.workers.dev</code><br><br>
+          Add these 3 secrets to the GitHub repo → Settings → Secrets → Actions:<br>
+          <code>CLOUDFLARE_API_TOKEN</code> · <code>CLOUDFLARE_ACCOUNT_ID</code> · <code>GROQ_API_KEY</code><br>
+          Then push any change to <code>worker/</code> — GitHub Actions deploys it automatically.
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>Session</h3>
+        <div class="settings-hint">Logged in as <code>shiva16</code>. Your GitHub token is stored in session memory only.</div>
+        <button class="btn-secondary" data-action="lock" style="margin-top:0.8em;">Lock &amp; Sign Out</button>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+// EVENT HANDLERS
+// ═══════════════════════════════════════════════════════
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const action = el.dataset.action;
+
+  if (action === 'login') {
+    const val = document.getElementById('pat-input')?.value?.trim();
+    if (!val) { toast('Enter your GitHub token','error'); return; }
+    S.pat = val;
+    sessionStorage.setItem('ps_pat', val);
+    S.loading = true; render();
+    try { await loadCatalogue(); S.loading = false; render(); }
+    catch(err) { S.pat=''; sessionStorage.removeItem('ps_pat'); S.loading=false; toast('Invalid token or network error','error'); render(); }
+    return;
+  }
+  if (action === 'lock') {
+    S.pat = ''; sessionStorage.removeItem('ps_pat');
+    S.view = 'list'; S.current = null; render(); return;
+  }
+  if (action === 'setBrand') {
+    S.brand = el.dataset.brand; S.view = 'list'; render(); return;
+  }
+  if (action === 'openSettings') { S.view = 'settings'; render(); return; }
+  if (action === 'saveWorkerUrl') {
+    const url = document.getElementById('worker-url-input')?.value?.trim().replace(/\/$/,'');
+    S.workerUrl = url; localStorage.setItem('ps_worker', url);
+    toast('Worker URL saved','success'); render(); return;
+  }
+  if (action === 'filterStatus') return; // handled by change event
+  if (action === 'newPresentation') { S.newForm={title:'',project:'',description:'',expires:'',brief:''}; S.modal='new'; render(); return; }
+  if (action === 'closeModal') { S.modal=null; render(); return; }
+
+  if (action === 'createEmpty' || action === 'createWithAI') {
+    const f = S.newForm;
+    if (!f.title.trim()) { toast('Title is required','error'); return; }
+    const slug = slugify(f.title);
+    if (S.presentations.find(p=>p.slug===slug)) { toast('A presentation with this slug already exists','error'); return; }
+    S.modal = null;
+    S.current = { id:Date.now()+'', slug, title:f.title, brand:S.brand, project:f.project, description:f.description, expires:f.expires||null, status:'draft', created:new Date().toISOString().slice(0,10), updated:new Date().toISOString().slice(0,10), slideCount:0 };
+    S.slides = [defaultSlide('cover')];
+    S.presentationSha = '';
+    S.activeSlide = 0;
+    S.dirty = true;
+    S.view = 'editor';
+    render();
+    if (action === 'createWithAI' && f.brief) {
+      S.generating = true; render();
+      try {
+        const result = await generateFullDeck(f.brief);
+        if (result.slides?.length) {
+          S.slides = result.slides.map(sl=>({ id:Date.now()+Math.random()+'', layout:sl.layout, data:sl.data }));
+          S.activeSlide = 0;
+        }
+      } catch(err) { toast('AI generation failed: '+err.message,'error'); }
+      S.generating = false; S.dirty = true; render();
+    }
+    return;
+  }
+
+  if (action === 'editPres') {
+    const slug = el.dataset.slug;
+    S.current = S.presentations.find(p=>p.slug===slug);
+    S.loading = true; S.view = 'editor'; render();
+    try { await loadPresentation(slug); }
+    catch(err) { toast('Could not load presentation','error'); }
+    S.loading = false; S.activeSlide = 0; S.dirty = false; render(); return;
+  }
+  if (action === 'viewPres') {
+    window.open(`${GH_PAGES}/view/${el.dataset.slug}/`,'_blank'); return;
+  }
+  if (action === 'backToList') {
+    if (S.dirty && !confirm('You have unsaved changes. Go back anyway?')) return;
+    S.view = 'list'; S.current = null; S.dirty = false;
+    S.loading = true; render();
+    await loadCatalogue(); S.loading = false; render(); return;
+  }
+  if (action === 'selectSlide') {
+    S.activeSlide = parseInt(el.dataset.idx); render(); return;
+  }
+  if (action === 'addSlide') { S.modal = 'add-slide'; render(); return; }
+  if (action === 'addSlideLayout') {
+    const newSlide = defaultSlide(el.dataset.layout);
+    S.slides.splice(S.activeSlide+1, 0, newSlide);
+    S.activeSlide = S.activeSlide+1;
+    S.modal = null; S.dirty = true; render(); return;
+  }
+  if (action === 'deleteSlide') {
+    const idx = parseInt(el.dataset.idx);
+    if (S.slides.length <= 1) { toast('Cannot delete the only slide','error'); return; }
+    if (!confirm('Delete this slide?')) return;
+    S.slides.splice(idx, 1);
+    S.activeSlide = Math.min(S.activeSlide, S.slides.length-1);
+    S.dirty = true; render(); return;
+  }
+  if (action === 'slideUp') {
+    const idx = parseInt(el.dataset.idx);
+    if (idx === 0) return;
+    [S.slides[idx-1], S.slides[idx]] = [S.slides[idx], S.slides[idx-1]];
+    S.activeSlide = idx-1; S.dirty = true; render(); return;
+  }
+  if (action === 'slideDown') {
+    const idx = parseInt(el.dataset.idx);
+    if (idx >= S.slides.length-1) return;
+    [S.slides[idx], S.slides[idx+1]] = [S.slides[idx+1], S.slides[idx]];
+    S.activeSlide = idx+1; S.dirty = true; render(); return;
+  }
+  if (action === 'addBullet') {
+    const slide = S.slides[S.activeSlide];
+    slide.data.bullets = [...(slide.data.bullets||[]), ''];
+    S.dirty = true; render(); return;
+  }
+  if (action === 'removeBullet') {
+    const slide = S.slides[S.activeSlide];
+    slide.data.bullets.splice(parseInt(el.dataset.idx), 1);
+    S.dirty = true; render(); return;
+  }
+  if (action === 'previewPres') {
+    const html = generateRevealHTML(S.current, S.slides);
+    const blob = new Blob([html], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(()=>URL.revokeObjectURL(url), 5000); return;
+  }
+  if (action === 'savePres') {
+    S.saving = true; render();
+    try {
+      await savePresentation();
+      S.dirty = false; toast('Saved','success');
+    } catch(err) { toast('Save failed: '+err.message,'error'); }
+    S.saving = false; render(); return;
+  }
+  if (action === 'publishPres') {
+    S.saving = true; render();
+    try {
+      await savePresentation();
+      const html = generateRevealHTML(S.current, S.slides);
+      const viewFile = await ghGet(`view/${S.current.slug}/index.html`);
+      await ghPut(`view/${S.current.slug}/index.html`, html, `Publish ${S.current.slug}`, viewFile?.sha);
+      // Update catalogue.json
+      const idx = S.presentations.findIndex(p=>p.slug===S.current.slug);
+      const entry = { ...S.current, slideCount:S.slides.length, updated:new Date().toISOString().slice(0,10), status: S.current.status === 'draft' ? 'published' : S.current.status };
+      if (idx>=0) S.presentations[idx] = entry; else S.presentations.push(entry);
+      S.current = entry;
+      await saveCatalogue();
+      S.dirty = false; toast('Published! Live in ~30s','success',4000);
+    } catch(err) { toast('Publish failed: '+err.message,'error'); }
+    S.saving = false; render(); return;
+  }
+  if (action === 'downloadPPTX') {
+    try { await downloadPPTX(S.current, S.slides); toast('PPTX downloaded','success'); }
+    catch(err) { toast('PPTX error: '+err.message,'error'); }
+    return;
+  }
+  if (action === 'downloadPDF') {
+    if (!S.current.slug || S.dirty) { toast('Save and publish first, then download PDF','info'); return; }
+    openPDF(S.current.slug); return;
+  }
+  if (action === 'aiSlide') {
+    if (!S.workerUrl) { toast('Set Worker URL in Settings first','error'); return; }
+    S.generating = true; render();
+    try {
+      const result = await generateSlideContent(S.slides[S.activeSlide]);
+      if (result.data) { S.slides[S.activeSlide].data = result.data; S.dirty = true; }
+    } catch(err) { toast('AI error: '+err.message,'error'); }
+    S.generating = false; render(); return;
+  }
+});
+
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.dataset.action === 'filterStatus') { S.filterStatus = el.value; render(); return; }
+  if (el.dataset.modalField) { S.newForm[el.dataset.modalField] = el.value; render(); return; }
+  if (el.dataset.action === 'changeLayout') {
+    const slide = S.slides[S.activeSlide];
+    if (slide.layout !== el.value) { slide.layout = el.value; slide.data = defaultSlide(el.value).data; S.dirty = true; render(); }
+    return;
+  }
+});
+
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (el.dataset.modalField) { S.newForm[el.dataset.modalField] = el.value; return; }
+  const slide = S.slides[S.activeSlide];
+  if (!slide) return;
+  if (el.dataset.field) {
+    if (el.dataset.field === 'bullet') { slide.data.bullets[parseInt(el.dataset.idx)] = el.value; }
+    else { slide.data[el.dataset.field] = el.value; }
+    S.dirty = true;
+    // Update preview without full re-render
+    const pf = document.querySelector('.preview-frame');
+    if (pf) { const brand = BRANDS[S.brand]; pf.innerHTML = renderSlidePreview(slide,brand).match(/<div class="preview-frame">([\s\S]*)<\/div>\s*<\/div>/)?.[1]||''; }
+    return;
+  }
+  if (el.dataset.pfield !== undefined) {
+    slide.data.products[parseInt(el.dataset.pidx)][el.dataset.pfield] = el.value;
+    S.dirty = true; return;
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'pat-input') document.querySelector('[data-action=login]')?.click();
+});
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+async function init() {
+  if (S.pat) {
+    S.loading = true; render();
+    try { await loadCatalogue(); }
+    catch(err) { S.pat = ''; sessionStorage.removeItem('ps_pat'); toast('Session expired, please sign in again','error'); }
+    S.loading = false;
+  }
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
