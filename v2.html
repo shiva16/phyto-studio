@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Phyto Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --font:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  --font:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;
   --bg:#fff;--surface:#f8f9fa;--surface2:#f1f3f4;--border:#e0e0e0;--border2:#c6c9ca;
   --text:#202124;--text2:#5f6368;--text3:#9aa0a6;
   --accent:#1a6b55;--accent2:#145a46;--accent-bg:#e8f4f0;
@@ -242,7 +242,7 @@ input[type=range]{accent-color:var(--accent)}
 // ===================== CONSTANTS =====================
 const GH_OWNER='shiva16', GH_REPO='phyto-studio', GH_BRANCH='main';
 const SLIDE_W=1280, SLIDE_H=720;
-const FONTS=['Inter','Arial','Georgia','Verdana','Trebuchet MS','Times New Roman','Courier New','Impact','Palatino','Garamond'];
+const FONTS=['Plus Jakarta Sans','Inter','Arial','Georgia','Verdana','Trebuchet MS','Times New Roman','Courier New','Impact','Palatino','Garamond'];
 const FONT_SIZES=[8,9,10,11,12,14,16,18,20,24,28,32,36,40,48,56,64,72,96];
 const BRAND_COLORS={phytolabs:'#1a535c',tcplants:'#52796f',carnivorousplants:'#2d6a4f',all:'#1a6b55'};
 const SHAPE_FILL_DEFAULTS=['#4285f4','#34a853','#fbbc04','#ea4335','#9c27b0','#00bcd4','#ff5722','#607d8b'];
@@ -875,7 +875,7 @@ function onMouseDown(opt){
   if(S.tool==='select')return;
   const p=S.fc.getPointer(opt.e);
   if(S.tool==='text'){
-    const tb=new fabric.Textbox('Text',{left:p.x,top:p.y,width:200,fontSize:24,fontFamily:'Inter',fill:'#1a1a1a',editable:true});
+    const tb=new fabric.Textbox('Text',{left:p.x,top:p.y,width:200,fontSize:24,fontFamily:'Plus Jakarta Sans',fill:'#1a1a1a',editable:true});
     S.fc.add(tb);S.fc.setActiveObject(tb);tb.enterEditing();tb.selectAll();S.fc.renderAll();
     setTool('select');pushHistory();return;
   }
