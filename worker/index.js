@@ -54,7 +54,7 @@ export default {
 
         const modelId = model === 'quality'
           ? 'llama-3.3-70b-versatile'
-          : 'llama3-8b-8192';
+          : 'llama-3.1-8b-instant';
 
         const groqRes = await fetch(GROQ_API_URL, {
           method: 'POST',

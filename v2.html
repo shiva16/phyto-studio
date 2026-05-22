@@ -437,7 +437,6 @@ function mountAuth(){
       </div>
       <div class="auth-right">
         <h2>Sign in</h2>
-        <p>Use your GitHub personal access token with <code>repo</code> scope to manage presentations.</p>
         <div class="form-group"><label>GitHub PAT</label><input id="pat-inp" type="password" placeholder="ghp_…" autocomplete="off" value="${S.pat}"></div>
         <div class="form-group"><label>AI Worker URL <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">(optional)</span></label><input id="worker-inp" type="url" placeholder="https://…workers.dev" value="${S.workerUrl}"></div>
         <button class="btn btn-primary" onclick="handleAuth()">Continue →</button>
@@ -520,16 +519,18 @@ function renderDashGrid(list){
   });
   grid.innerHTML=html;
 
-  // Event delegation — one listener on the grid, no inline onclick
-  grid.addEventListener('click',e=>{
-    const action=e.target.closest('[data-action]')?.dataset.action;
-    const card=e.target.closest('[data-slug]');
-    if(action==='new'){openNewPresModal();return;}
-    if(!card)return;
+  // Direct per-element listeners — no delegation, no data-action traversal
+  grid.querySelector('.new-card')?.addEventListener('click',openNewPresModal);
+  grid.querySelectorAll('.pres-card[data-slug]').forEach(card=>{
     const slug=card.dataset.slug;
     const viewKey=card.dataset.viewkey;
-    if(action==='edit')openEditor(slug);
-    else if(action==='share'&&viewKey)copyShareLink(slug,viewKey);
+    card.addEventListener('click',e=>{
+      if(e.target.closest('[data-action="share"]')){
+        if(viewKey)copyShareLink(slug,viewKey);
+      }else{
+        openEditor(slug);
+      }
+    });
   });
 }
 
