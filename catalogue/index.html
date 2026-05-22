@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catalogue — Phyto Evolution</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --phytolabs: #1a535c;
+    --tcplants: #52796f;
+    --cp: #2d6a4f;
+    --text: #1c2331;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --bg: #f9fafb;
+    --card: #ffffff;
+    --radius: 10px;
+  }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 0 2em;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+  }
+  .logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.3em;
+    font-weight: 700;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .logo span { color: var(--phytolabs); }
+
+  /* ── Brand filter tabs ── */
+  .brand-tabs {
+    display: flex;
+    gap: 0.4em;
+  }
+  .brand-tab {
+    padding: 0.35em 1em;
+    border-radius: 20px;
+    border: none;
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.82em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--bg);
+    color: var(--muted);
+  }
+  .brand-tab:hover { background: var(--border); color: var(--text); }
+  .brand-tab.active[data-brand="all"]     { background: var(--text); color: #fff; }
+  .brand-tab.active[data-brand="phytolabs"]     { background: var(--phytolabs); color: #fff; }
+  .brand-tab.active[data-brand="tcplants"]      { background: var(--tcplants); color: #fff; }
+  .brand-tab.active[data-brand="carnivorousplants"] { background: var(--cp); color: #fff; }
+
+  /* ── Main ── */
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2.5em 2em;
+  }
+
+  .section-heading {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.6em;
+    color: var(--text);
+    margin-bottom: 0.3em;
+  }
+  .section-sub {
+    color: var(--muted);
+    font-size: 0.88em;
+    margin-bottom: 2em;
+  }
+
+  /* ── Cards ── */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5em;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: box-shadow 0.2s, transform 0.2s;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+  }
+  .card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.1); transform: translateY(-2px); }
+
+  .card-accent {
+    height: 5px;
+  }
+  .card-accent.phytolabs     { background: var(--phytolabs); }
+  .card-accent.tcplants      { background: var(--tcplants); }
+  .card-accent.carnivorousplants { background: var(--cp); }
+
+  .card-body { padding: 1.4em 1.4em 1em; flex: 1; }
+  .card-brand {
+    font-size: 0.72em;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 0.6em;
+  }
+  .card-brand.phytolabs     { color: var(--phytolabs); }
+  .card-brand.tcplants      { color: var(--tcplants); }
+  .card-brand.carnivorousplants { color: var(--cp); }
+
+  .card-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.2em;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text);
+    margin-bottom: 0.5em;
+  }
+  .card-desc {
+    font-size: 0.83em;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+  .card-footer {
+    padding: 0.8em 1.4em;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.78em;
+    color: var(--muted);
+  }
+  .card-meta { display: flex; gap: 1em; }
+  .view-btn {
+    font-size: 0.8em;
+    font-weight: 600;
+    padding: 0.3em 0.9em;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s;
+    color: #fff;
+  }
+  .view-btn.phytolabs     { background: var(--phytolabs); }
+  .view-btn.tcplants      { background: var(--tcplants); }
+  .view-btn.carnivorousplants { background: var(--cp); }
+
+  /* ── Empty state ── */
+  .empty {
+    text-align: center;
+    padding: 4em 2em;
+    color: var(--muted);
+  }
+  .empty h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.4em; margin-bottom: 0.5em; color: var(--text); }
+
+  /* ── Loading ── */
+  .loading { text-align: center; padding: 4em; color: var(--muted); font-size: 0.9em; }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    padding: 2em;
+    color: var(--muted);
+    font-size: 0.8em;
+    border-top: 1px solid var(--border);
+    margin-top: 3em;
+  }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--text); }
+
+  @media (max-width: 600px) {
+    .brand-tabs { display: none; }
+    main { padding: 1.5em 1em; }
+    .cards-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="logo" href="https://phytolabs.in">🌿 Phyto <span>Evolution</span></a>
+    <nav class="brand-tabs" id="brandTabs">
+      <button class="brand-tab active" data-brand="all">All</button>
+      <button class="brand-tab" data-brand="phytolabs">Phyto Labs</button>
+      <button class="brand-tab" data-brand="tcplants">TC Plants</button>
+      <button class="brand-tab" data-brand="carnivorousplants">Carnivorous Plants</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <h1 class="section-heading">Catalogues &amp; Presentations</h1>
+  <p class="section-sub" id="subText">Published catalogues, product decks, and presentations from Phyto Evolution.</p>
+  <div class="cards-grid" id="cardsGrid">
+    <div class="loading">Loading catalogues…</div>
+  </div>
+</main>
+
+<footer>
+  <a href="https://studio.phytolabs.in">Phyto Studio</a> &nbsp;·&nbsp;
+  <a href="https://phytolabs.in">phytolabs.in</a> &nbsp;·&nbsp;
+  <a href="https://tcplants.in">tcplants.in</a> &nbsp;·&nbsp;
+  <a href="https://carnivorousplants.in">carnivorousplants.in</a>
+</footer>
+
+<script>
+const CATALOGUE_URL = 'https://studio.phytolabs.in/data/catalogue.json';
+
+const BRAND_LABELS = {
+  phytolabs: 'Phyto Labs',
+  tcplants: 'TC Plants',
+  carnivorousplants: 'Carnivorous Plants',
+};
+
+const BRAND_SITES = {
+  phytolabs: 'https://phytolabs.in',
+  tcplants: 'https://tcplants.in',
+  carnivorousplants: 'https://carnivorousplants.in',
+};
+
+let allPresentations = [];
+let activeBrand = new URLSearchParams(location.search).get('brand') || 'all';
+
+function formatDate(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function isVisible(p) {
+  if (p.status !== 'published') return false;
+  if (p.expires && new Date(p.expires) < new Date()) return false;
+  return true;
+}
+
+function renderCards(brand) {
+  const grid = document.getElementById('cardsGrid');
+  const sub = document.getElementById('subText');
+
+  const filtered = allPresentations
+    .filter(isVisible)
+    .filter(p => brand === 'all' || p.brand === brand)
+    .sort((a, b) => new Date(b.updated || b.created) - new Date(a.updated || a.created));
+
+  if (brand !== 'all') {
+    sub.textContent = `Catalogues and presentations from ${BRAND_LABELS[brand] || brand}.`;
+  } else {
+    sub.textContent = 'Published catalogues, product decks, and presentations from Phyto Evolution.';
+  }
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><h3>No catalogues found</h3><p>Check back soon.</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(p => `
+    <a class="card" href="https://studio.phytolabs.in/view/${p.slug}/" target="_blank" rel="noopener">
+      <div class="card-accent ${p.brand}"></div>
+      <div class="card-body">
+        <div class="card-brand ${p.brand}">${BRAND_LABELS[p.brand] || p.brand}</div>
+        <div class="card-title">${p.title}</div>
+        <div class="card-desc">${p.description || ''}</div>
+      </div>
+      <div class="card-footer">
+        <div class="card-meta">
+          <span>${p.slideCount || '—'} slides</span>
+          <span>${formatDate(p.created)}</span>
+          ${p.project ? `<span>${p.project}</span>` : ''}
+        </div>
+        <button class="view-btn ${p.brand}" onclick="event.preventDefault();window.open('https://studio.phytolabs.in/view/${p.slug}/','_blank')">View →</button>
+      </div>
+    </a>
+  `).join('');
+}
+
+function setActiveBrand(brand) {
+  activeBrand = brand;
+  document.querySelectorAll('.brand-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.brand === brand);
+  });
+  renderCards(brand);
+  const url = new URL(location.href);
+  if (brand === 'all') url.searchParams.delete('brand');
+  else url.searchParams.set('brand', brand);
+  history.replaceState(null, '', url.toString());
+}
+
+document.getElementById('brandTabs').addEventListener('click', e => {
+  const btn = e.target.closest('.brand-tab');
+  if (btn) setActiveBrand(btn.dataset.brand);
+});
+
+// Set initial active tab
+document.querySelectorAll('.brand-tab').forEach(btn => {
+  btn.classList.toggle('active', btn.dataset.brand === activeBrand);
+});
+
+// Load catalogue data
+fetch(CATALOGUE_URL + '?t=' + Date.now())
+  .then(r => r.json())
+  .then(data => {
+    allPresentations = data.presentations || [];
+    renderCards(activeBrand);
+  })
+  .catch(() => {
+    document.getElementById('cardsGrid').innerHTML =
+      '<div class="empty" style="grid-column:1/-1"><h3>Could not load catalogues</h3><p>Please try again later.</p></div>';
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+name = "phyto-studio"
+main = "index.js"
+compatibility_date = "2024-09-25"
+
+[observability]
+enabled = true
+
+# After deploy, add custom domain in CF dashboard if phytolabs.in moves to CF DNS.
+# Default URL will be: phyto-studio.{account-subdomain}.workers.dev
+# Enter that URL in Phyto Studio settings panel.
