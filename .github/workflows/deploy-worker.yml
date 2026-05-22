@@ -18,7 +18,3 @@ jobs:
         with:
           apiToken: ${{ secrets.studio_cf }}
           workingDirectory: worker
-          secrets: |
-            GROQ_API_KEY
-        env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
