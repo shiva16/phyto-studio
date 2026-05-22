@@ -35,8 +35,8 @@ input,select,textarea,button{font-family:inherit}
 
 /* ---- BUTTONS ---- */
 /* Icon/toolbar buttons use system sans-serif for broad Unicode glyph coverage */
-.btn-icon,.tb-btn,.sp-btn,.pp-icon-btn{font-family:system-ui,sans-serif}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r);border:none;font-size:13px;font-weight:500;font-family:var(--font);cursor:pointer;transition:background .15s,opacity .15s;white-space:nowrap;line-height:1}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r);border:none;font-size:13px;font-weight:500;font-family:system-ui,sans-serif;cursor:pointer;transition:background .15s,opacity .15s;white-space:nowrap;line-height:1}
+.modal-title,.card-thumb-empty,.csb-icon,.notes-hdr{font-family:system-ui,sans-serif}
 .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent2)}
 .btn-secondary{background:var(--surface2);color:var(--text)}.btn-secondary:hover{background:var(--border)}
 .btn-ghost{background:transparent;color:var(--text2)}.btn-ghost:hover{background:var(--surface2);color:var(--text)}
@@ -410,7 +410,7 @@ async function loadPresJSON(slug){
   }
   // File not found — open fresh so the editor can work; saves on first Ctrl+S
   const meta=S.presentations.find(p=>p.slug===slug)||{};
-  toast('Starting fresh — file not found in repo','warn',4000);
+  toast(`No data file for "${slug}" — opening blank presentation`,'warn',5000);
   return{slug,title:meta.title||slug,brand:meta.brand||'all',status:meta.status||'draft',
     description:meta.description||'',visible_from:meta.visible_from||null,expires:meta.expires||null,
     created:meta.created||new Date().toISOString(),updated:new Date().toISOString(),
@@ -524,7 +524,7 @@ function renderDashGrid(list){
     const meta=statusMeta(p);
     const hasShare=p.status==='published'&&p.viewKey;
     html+=`<div class="pres-card" data-slug="${escHtml(p.slug)}" data-viewkey="${hasShare?escHtml(p.viewKey):''}">
-      <div class="card-thumb" data-action="edit"><div class="card-thumb-empty">🗂</div></div>
+      <div class="card-thumb" data-action="edit"><div class="card-thumb-empty"></div></div>
       <div class="card-info">
         <div class="card-title" data-action="edit" style="cursor:pointer">${escHtml(p.title)}</div>
         <div class="card-meta">
@@ -626,7 +626,7 @@ function openNewPresModal(){
         <div class="form-group"><label>Visibility</label><select id="np-vis" class="pp-sel" style="width:100%;height:34px"><option value="draft">Draft (hidden)</option><option value="published">Published (live)</option></select></div>
       </div>
       <div class="form-group"><label>Description <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">(optional — shown in catalogue)</span></label><input id="np-desc" type="text" class="pp-input" style="width:100%;height:34px" placeholder="Short description"></div>
-      ${hasWorker?`<div class="form-group"><label>AI Brief <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--accent)">✦ optional — generates opening slide content</span></label><textarea id="np-brief" style="width:100%;height:68px;border:1.5px solid var(--border);border-radius:var(--r);padding:8px 10px;font-size:13px;font-family:var(--font);resize:none;background:var(--bg);color:var(--text);outline:none" placeholder="e.g. Product launch for Nepenthes Rajah collection, highlight rarity, care tips and pricing"></textarea></div>`:''}
+      ${hasWorker?`<div class="form-group"><label>AI Brief <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--accent)">* optional — generates opening slide content</span></label><textarea id="np-brief" style="width:100%;height:68px;border:1.5px solid var(--border);border-radius:var(--r);padding:8px 10px;font-size:13px;font-family:var(--font);resize:none;background:var(--bg);color:var(--text);outline:none" placeholder="e.g. Product launch for Nepenthes Rajah collection, highlight rarity, care tips and pricing"></textarea></div>`:''}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group"><label>Visible from</label><input id="np-from" type="datetime-local" class="pp-input" style="width:100%;height:34px"></div>
         <div class="form-group"><label>Expires</label><input id="np-exp" type="datetime-local" class="pp-input" style="width:100%;height:34px"></div>
@@ -635,7 +635,7 @@ function openNewPresModal(){
     </div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="document.getElementById('new-pres-overlay').remove()">Cancel</button>
-      ${hasWorker?`<button class="btn btn-ghost" onclick="createPresentation(true)">✦ Create with AI</button>`:''}
+      ${hasWorker?`<button class="btn btn-ghost" onclick="createPresentation(true)">* Create with AI</button>`:''}
       <button class="btn btn-primary" onclick="createPresentation(false)">Create →</button>
     </div>
   </div>`;
@@ -749,7 +749,7 @@ async function openEditor(slug){
       </div>
       <div class="ed-hdr-right">
         <span class="ed-save-badge" id="save-badge"></span>
-        <button class="btn btn-ghost btn-sm" onclick="openAiPanel()" title="AI Content Generator">✦ AI</button>
+        <button class="btn btn-ghost btn-sm" onclick="openAiPanel()" title="AI Content Generator">* AI</button>
         <button class="btn btn-ghost btn-sm" onclick="openPresSettings()" title="Presentation settings">⚙</button>
         <button class="btn btn-ghost btn-sm" onclick="cycleTheme()">◑</button>
         <button class="btn btn-secondary btn-sm" onclick="exportPPTX()">↓ PPTX</button>
@@ -772,7 +772,7 @@ async function openEditor(slug){
           <button class="sp-btn" onclick="insertShape('diamond')" title="Diamond">◇</button>
         </div>
       </div>
-      <button class="tb-btn" id="tool-image" data-tip="Image" onclick="promptImage()">🖼</button>
+      <button class="tb-btn" id="tool-image" data-tip="Image" onclick="promptImage()">Img</button>
       <div class="tb-sep"></div>
       <select class="tb-sel" id="tb-font" style="width:110px" onchange="applyFont(this.value)" title="Font family">
         ${FONTS.map(f=>`<option value="${f}">${f}</option>`).join('')}
@@ -1797,7 +1797,7 @@ function openAiPanel(){
   el.id='ai-panel-overlay';
   el.innerHTML=`
   <div class="modal" style="width:480px">
-    <div class="modal-hdr"><div class="modal-title">✦ AI Slide Generator</div><button class="btn-icon" onclick="document.getElementById('ai-panel-overlay').remove()">✕</button></div>
+    <div class="modal-hdr"><div class="modal-title">* AI Slide Generator</div><button class="btn-icon" onclick="document.getElementById('ai-panel-overlay').remove()">✕</button></div>
     <div class="modal-body">
       <p style="font-size:12px;color:var(--text2);margin-bottom:14px">Describe what you want on this slide. AI generates a title, subtitle and bullet points you can apply directly to the canvas.</p>
       <div class="form-group"><label>Prompt</label><textarea id="ai-prompt" style="width:100%;height:80px;border:1.5px solid var(--border);border-radius:var(--r);padding:8px 10px;font-size:13px;font-family:var(--font);resize:vertical;background:var(--bg);color:var(--text);outline:none" placeholder="e.g. Product launch slide for Nepenthes Rajah carnivorous plant, highlight rarity and care tips"></textarea></div>
