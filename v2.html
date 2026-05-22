@@ -65,7 +65,11 @@ input,select,textarea,button{font-family:inherit}
 
 /* ---- DASHBOARD ---- */
 #dash-view{display:flex;flex-direction:column;height:100vh}
-.dash-hdr{height:56px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0}
+.dash-hdr{height:56px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
+.brand-tabs{display:flex;gap:4px}
+.brand-tab{padding:5px 13px;border-radius:20px;border:1.5px solid transparent;background:transparent;font-size:12px;font-weight:600;font-family:var(--font);color:var(--text2);cursor:pointer;transition:all .15s}
+.brand-tab:hover{color:var(--text);background:var(--surface2)}
+.brand-tab.active{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
 .dash-logo{font-size:15px;font-weight:600;cursor:pointer;color:var(--text)}
 .dash-logo em{color:var(--accent);font-style:normal}
 .dash-search{flex:1;max-width:360px;position:relative}
@@ -395,13 +399,20 @@ async function updatePublicCatalogue(){
 async function loadPresJSON(slug){
   const enc=await ghTryGetEnc(`data/presentations/${slug}.enc`);
   if(enc){enc.data._sha=enc.sha;return enc.data;}
-  // Legacy plain .json — load and migrate on next save
-  const f=await ghGet(`data/presentations/${slug}.json`);
-  const d=JSON.parse(atob(f.content.replace(/\n/g,'')));
-  d._sha=null; d._legacySha=f.sha; d._legacyPath=`data/presentations/${slug}.json`;
-  // Detect v1 format: slides have .html but no .fabricJson
-  if(d.slides?.length>0&&d.slides[0].html!==undefined&&!d.slides[0].fabricJson)d._isLegacyV1=true;
-  return d;
+  const f=await ghTryGet(`data/presentations/${slug}.json`);
+  if(f){
+    const d=JSON.parse(atob(f.content.replace(/\n/g,'')));
+    d._sha=null;d._legacySha=f.sha;d._legacyPath=`data/presentations/${slug}.json`;
+    if(d.slides?.length>0&&d.slides[0].html!==undefined&&!d.slides[0].fabricJson)d._isLegacyV1=true;
+    return d;
+  }
+  // File not found — open fresh so the editor can work; saves on first Ctrl+S
+  const meta=S.presentations.find(p=>p.slug===slug)||{};
+  toast('Starting fresh — file not found in repo','warn',4000);
+  return{slug,title:meta.title||slug,brand:meta.brand||'all',status:meta.status||'draft',
+    description:meta.description||'',visible_from:meta.visible_from||null,expires:meta.expires||null,
+    created:meta.created||new Date().toISOString(),updated:new Date().toISOString(),
+    slides:[{id:uuid(),fabricJson:blankSlideJson(),bg:'#ffffff',thumbnail:null,notes:''}],_sha:null};
 }
 async function savePresJSON(pres){
   const{_sha,_legacySha,_legacyPath,...data}=pres;
@@ -438,7 +449,6 @@ function mountAuth(){
       <div class="auth-right">
         <h2>Sign in</h2>
         <div class="form-group"><label>GitHub PAT</label><input id="pat-inp" type="password" placeholder="ghp_…" autocomplete="off" value="${S.pat}"></div>
-        <div class="form-group"><label>AI Worker URL <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">(optional)</span></label><input id="worker-inp" type="url" placeholder="https://…workers.dev" value="${S.workerUrl}"></div>
         <button class="btn btn-primary" onclick="handleAuth()">Continue →</button>
         <div class="auth-err" id="auth-err"></div>
       </div>
@@ -449,20 +459,18 @@ function mountAuth(){
 
 async function handleAuth(){
   const pat=document.getElementById('pat-inp').value.trim();
-  const worker=document.getElementById('worker-inp').value.trim();
   const err=document.getElementById('auth-err');
   if(!pat){err.textContent='PAT required';return;}
   err.textContent='Checking…';
   try{
     const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}`,{headers:{Authorization:`token ${pat}`}});
     if(!r.ok){err.textContent='Invalid PAT or no repo access';return;}
-    err.textContent='Deriving encryption key…';
+    err.textContent='Loading…';
     S.aesKey=await deriveKey(pat);
     S.pat=pat;sessionStorage.setItem('ps_pat',pat);
-    if(worker){S.workerUrl=worker;localStorage.setItem('ps_worker',worker);}
     err.textContent='';
     await mountDashboard();
-  }catch(e){err.textContent='Network error: '+e.message;}
+  }catch(e){err.textContent='Error: '+e.message;}
 }
 
 // ===================== DASHBOARD =====================
@@ -472,19 +480,32 @@ async function mountDashboard(){
   <div id="dash-view">
     <div class="dash-hdr">
       <div class="dash-logo"><em>Phyto</em> Studio</div>
-      <div class="dash-search"><span class="dash-search-icon">⌕</span><input id="dash-q" type="text" placeholder="Search presentations…" oninput="filterDash(this.value)"></div>
-      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-        <button class="btn btn-ghost btn-sm" onclick="cycleTheme()">◑ Theme</button>
-        <button class="btn btn-ghost btn-sm" onclick="mountAuth()">⎋ Sign out</button>
+      <div class="brand-tabs" id="brand-tabs">
+        <button class="brand-tab${S.brand==='all'?' active':''}" data-brand="all">All</button>
+        <button class="brand-tab${S.brand==='phytolabs'?' active':''}" data-brand="phytolabs">Phyto Labs</button>
+        <button class="brand-tab${S.brand==='tcplants'?' active':''}" data-brand="tcplants">TC Plants</button>
+        <button class="brand-tab${S.brand==='carnivorousplants'?' active':''}" data-brand="carnivorousplants">Carnivorous Plants</button>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+        <div class="dash-search"><span class="dash-search-icon">⌕</span><input id="dash-q" type="text" placeholder="Search…" oninput="filterDash(this.value)"></div>
+        <button class="btn btn-ghost btn-sm" onclick="openDashSettings()" title="Settings">⚙</button>
+        <button class="btn btn-ghost btn-sm" onclick="cycleTheme()">◑</button>
+        <button class="btn btn-ghost btn-sm" onclick="mountAuth()">⎋</button>
       </div>
     </div>
     <div class="dash-body">
       <div class="dash-section">
-        <div class="dash-section-hdr"><h3>Presentations</h3></div>
         <div class="pres-grid" id="pres-grid"><div style="color:var(--text3);font-size:13px;padding:20px 0">Loading…</div></div>
       </div>
     </div>
   </div>`;
+  document.getElementById('brand-tabs').addEventListener('click',e=>{
+    const t=e.target.closest('[data-brand]');
+    if(!t)return;
+    S.brand=t.dataset.brand;
+    document.querySelectorAll('.brand-tab').forEach(b=>b.classList.toggle('active',b.dataset.brand===S.brand));
+    renderDashGrid(S.presentations);
+  });
   try{
     await loadCatalogue();
     renderDashGrid(S.presentations);
@@ -492,8 +513,7 @@ async function mountDashboard(){
 }
 
 function renderDashGrid(list){
-  const brand=S.brand==='all'?null:S.brand;
-  const filtered=brand?list.filter(p=>p.brand===brand):list;
+  const filtered=S.brand==='all'?list:list.filter(p=>p.brand===S.brand);
   const grid=document.getElementById('pres-grid');
   if(!grid)return;
   let html=`<div class="pres-card new-card" data-action="new">
@@ -534,6 +554,34 @@ function renderDashGrid(list){
   });
 }
 
+function openDashSettings(){
+  if(document.getElementById('dash-settings-overlay')){document.getElementById('dash-settings-overlay').remove();return;}
+  const el=document.createElement('div');
+  el.className='modal-overlay';
+  el.id='dash-settings-overlay';
+  el.innerHTML=`
+  <div class="modal" style="width:400px">
+    <div class="modal-hdr"><div class="modal-title">⚙ Settings</div><button class="btn-icon" onclick="document.getElementById('dash-settings-overlay').remove()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>AI Worker URL</label><input id="ds-worker" type="url" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r);padding:9px 12px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);outline:none" placeholder="https://studio.carnivorousplants-in.workers.dev" value="${S.workerUrl}"></div>
+      <p style="font-size:11px;color:var(--text3);margin-top:-8px">Required for AI generation. Set once and it's remembered in this browser.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="document.getElementById('dash-settings-overlay').remove()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDashSettings()">Save</button>
+    </div>
+  </div>`;
+  document.body.appendChild(el);
+}
+
+function saveDashSettings(){
+  const w=document.getElementById('ds-worker')?.value.trim().replace(/\/$/,'');
+  S.workerUrl=w||'';
+  if(w)localStorage.setItem('ps_worker',w);else localStorage.removeItem('ps_worker');
+  document.getElementById('dash-settings-overlay')?.remove();
+  toast('Settings saved','ok');
+}
+
 function filterDash(q){
   const filtered=S.presentations.filter(p=>p.title.toLowerCase().includes(q.toLowerCase()));
   renderDashGrid(filtered);
@@ -565,24 +613,28 @@ function openNewPresModal(){
   const el=document.createElement('div');
   el.className='modal-overlay';
   el.id='new-pres-overlay';
+  const hasWorker=!!S.workerUrl;
   el.innerHTML=`
-  <div class="modal">
+  <div class="modal" style="width:500px">
     <div class="modal-hdr"><div class="modal-title">New Presentation</div><button class="btn-icon" onclick="document.getElementById('new-pres-overlay').remove()">✕</button></div>
     <div class="modal-body">
-      <div class="form-group"><label>Title</label><input id="np-title" type="text" class="pp-input" style="width:100%;height:32px" placeholder="e.g. Product Catalogue 2026" oninput="autoSlug()"></div>
-      <div class="form-group"><label>URL slug</label><input id="np-slug" type="text" class="pp-input" style="width:100%;height:32px" placeholder="product-catalogue-2026"></div>
+      <div class="form-group"><label>Title</label><input id="np-title" type="text" class="pp-input" style="width:100%;height:34px" placeholder="e.g. Nepenthes Catalogue 2026" oninput="autoSlug()"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="form-group"><label>Brand</label><select id="np-brand" class="pp-sel" style="width:100%;height:32px">${brandOpts}</select></div>
-        <div class="form-group"><label>Visibility</label><select id="np-vis" class="pp-sel" style="width:100%;height:32px"><option value="draft">Draft (hidden)</option><option value="published">Published (live)</option></select></div>
+        <div class="form-group"><label>Brand</label><select id="np-brand" class="pp-sel" style="width:100%;height:34px">${brandOpts}</select></div>
+        <div class="form-group"><label>Visibility</label><select id="np-vis" class="pp-sel" style="width:100%;height:34px"><option value="draft">Draft (hidden)</option><option value="published">Published (live)</option></select></div>
       </div>
+      <div class="form-group"><label>Description <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">(optional — shown in catalogue)</span></label><input id="np-desc" type="text" class="pp-input" style="width:100%;height:34px" placeholder="Short description"></div>
+      ${hasWorker?`<div class="form-group"><label>AI Brief <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--accent)">✦ optional — generates opening slide content</span></label><textarea id="np-brief" style="width:100%;height:68px;border:1.5px solid var(--border);border-radius:var(--r);padding:8px 10px;font-size:13px;font-family:var(--font);resize:none;background:var(--bg);color:var(--text);outline:none" placeholder="e.g. Product launch for Nepenthes Rajah collection, highlight rarity, care tips and pricing"></textarea></div>`:''}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="form-group"><label>Visible from (IST)</label><input id="np-from" type="datetime-local" class="pp-input" style="width:100%;height:32px"></div>
-        <div class="form-group"><label>Expires (IST)</label><input id="np-exp" type="datetime-local" class="pp-input" style="width:100%;height:32px"></div>
+        <div class="form-group"><label>Visible from</label><input id="np-from" type="datetime-local" class="pp-input" style="width:100%;height:34px"></div>
+        <div class="form-group"><label>Expires</label><input id="np-exp" type="datetime-local" class="pp-input" style="width:100%;height:34px"></div>
       </div>
+      <div class="form-group" style="display:none"><label>Slug</label><input id="np-slug" type="text" class="pp-input" style="width:100%;height:34px" placeholder="auto-generated"></div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="document.getElementById('new-pres-overlay').remove()">Cancel</button>
-      <button class="btn btn-primary" onclick="createPresentation()">Create →</button>
+      ${hasWorker?`<button class="btn btn-ghost" onclick="createPresentation(true)">✦ Create with AI</button>`:''}
+      <button class="btn btn-primary" onclick="createPresentation(false)">Create →</button>
     </div>
   </div>`;
   document.body.appendChild(el);
@@ -595,25 +647,28 @@ function autoSlug(){
   if(s&&!s.dataset.manual)s.value=slugify(t);
 }
 
-async function createPresentation(){
+async function createPresentation(withAI=false){
   const title=document.getElementById('np-title')?.value.trim();
   const slugRaw=document.getElementById('np-slug')?.value.trim();
   const brand=document.getElementById('np-brand')?.value;
   const status=document.getElementById('np-vis')?.value||'draft';
   const vf=document.getElementById('np-from')?.value||null;
   const exp=document.getElementById('np-exp')?.value||null;
+  const desc=document.getElementById('np-desc')?.value.trim()||'';
+  const brief=document.getElementById('np-brief')?.value.trim()||'';
   if(!title){toast('Title required','err');return;}
   const slug=slugify(slugRaw||title);
-  if(S.presentations.find(p=>p.slug===slug)){toast('Slug already exists — edit it','err');return;}
+  if(S.presentations.find(p=>p.slug===slug)){toast('Slug already exists','err');return;}
   const now=new Date().toISOString();
-  const pres={slug,title,brand:brand||'all',status,visible_from:vf||null,expires:exp||null,created:now,updated:now,_sha:null};
+  const pres={slug,title,brand:brand||'all',status,description:desc,visible_from:vf||null,expires:exp||null,created:now,updated:now,_sha:null};
   const presData={...pres,slides:[{id:uuid(),fabricJson:blankSlideJson(),bg:'#ffffff',thumbnail:null,notes:''}]};
   try{
     await savePresJSON(presData);
-    S.presentations.push({slug,title,brand:brand||'all',status,visible_from:vf||null,expires:exp||null,created:now,updated:now});
+    S.presentations.push({slug,title,brand:brand||'all',status,description:desc,visible_from:vf||null,expires:exp||null,created:now,updated:now});
     await saveCatalogue();
     document.getElementById('new-pres-overlay')?.remove();
     toast('Created!','ok');
+    if(withAI&&brief){S._pendingAiBrief=brief;}
     openEditor(slug);
   }catch(e){toast('Error: '+e.message,'err');}
 }
@@ -788,6 +843,15 @@ async function openEditor(slug){
     initFabric();
     loadSlide(0);
     setupCanvasContextMenu();
+    // If created with AI brief, auto-open AI panel after a short delay
+    if(S._pendingAiBrief){
+      const brief=S._pendingAiBrief;
+      S._pendingAiBrief=null;
+      setTimeout(()=>{
+        openAiPanel();
+        setTimeout(()=>{const ta=document.getElementById('ai-prompt');if(ta)ta.value=brief;},100);
+      },600);
+    }
   }catch(e){toast('Failed to load: '+e.message,'err');}
 }
 
