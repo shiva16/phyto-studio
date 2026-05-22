@@ -399,6 +399,8 @@ async function loadPresJSON(slug){
   const f=await ghGet(`data/presentations/${slug}.json`);
   const d=JSON.parse(atob(f.content.replace(/\n/g,'')));
   d._sha=null; d._legacySha=f.sha; d._legacyPath=`data/presentations/${slug}.json`;
+  // Detect v1 format: slides have .html but no .fabricJson
+  if(d.slides?.length>0&&d.slides[0].html!==undefined&&!d.slides[0].fabricJson)d._isLegacyV1=true;
   return d;
 }
 async function savePresJSON(pres){
@@ -689,6 +691,8 @@ async function openEditor(slug){
       </div>
       <div class="ed-hdr-right">
         <span class="ed-save-badge" id="save-badge"></span>
+        <button class="btn btn-ghost btn-sm" onclick="openAiPanel()" title="AI Content Generator">✦ AI</button>
+        <button class="btn btn-ghost btn-sm" onclick="openPresSettings()" title="Presentation settings">⚙</button>
         <button class="btn btn-ghost btn-sm" onclick="cycleTheme()">◑</button>
         <button class="btn btn-secondary btn-sm" onclick="exportPPTX()">⬇ PPTX</button>
         <button class="btn btn-primary btn-sm" onclick="publishReveal()">▶ Publish</button>
@@ -774,6 +778,7 @@ async function openEditor(slug){
   // Load data and init canvas
   try{
     const data=await loadPresJSON(slug);
+    if(data._isLegacyV1)toast('Legacy v1 presentation — slides are blank. Add new content or delete via ⚙ Settings.','warn',7000);
     S.current=data;
     S.slides=data.slides||[{id:uuid(),fabricJson:blankSlideJson(),bg:'#ffffff',thumbnail:null,notes:''}];
     S.curSlide=0;
@@ -821,7 +826,7 @@ function initFabric(){
   fc.on('mouse:move',onMouseMove);
   fc.on('mouse:up',onMouseUp);
 
-  fitCanvas();
+  requestAnimationFrame(()=>fitCanvas());
 
   const ro=new ResizeObserver(fitCanvas);
   const area=document.getElementById('canvas-area');
@@ -1048,7 +1053,7 @@ function loadSlide(i){
   const sl=S.slides[i];
   S.hist=[];S.histIdx=-1;
   S.fc.loadFromJSON(sl.fabricJson||blankSlideJson(),()=>{
-    S.fc.setBackgroundColor(sl.bg||'#ffffff',()=>S.fc.renderAll());
+    S.fc.setBackgroundColor(sl.bg||'#ffffff',()=>{S.fc.renderAll();updateThumb();});
     pushHistory();
     clearPropsPanel();
     updateToolbar();
@@ -1703,6 +1708,188 @@ async function renderSlideImg(slide,scale=1){
     });
   });
 }
+}
+
+// ===================== AI GENERATION =====================
+async function callWorker(messages,model='fast'){
+  if(!S.workerUrl){toast('No AI Worker URL set — configure it at Sign in','err');return null;}
+  const r=await fetch(S.workerUrl+'/generate',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({messages,model})
+  });
+  const data=await r.json();
+  if(!r.ok)throw new Error(data.error||'Worker error '+r.status);
+  return data.choices?.[0]?.message?.content||null;
+}
+
+function openAiPanel(){
+  if(!S.fc||!S.current){toast('Open a presentation first','err');return;}
+  if(document.getElementById('ai-panel-overlay')){document.getElementById('ai-panel-overlay').remove();return;}
+  const el=document.createElement('div');
+  el.className='modal-overlay';
+  el.id='ai-panel-overlay';
+  el.innerHTML=`
+  <div class="modal" style="width:480px">
+    <div class="modal-hdr"><div class="modal-title">✦ AI Slide Generator</div><button class="btn-icon" onclick="document.getElementById('ai-panel-overlay').remove()">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text2);margin-bottom:14px">Describe what you want on this slide. AI generates a title, subtitle and bullet points you can apply directly to the canvas.</p>
+      <div class="form-group"><label>Prompt</label><textarea id="ai-prompt" style="width:100%;height:80px;border:1.5px solid var(--border);border-radius:var(--r);padding:8px 10px;font-size:13px;font-family:var(--font);resize:vertical;background:var(--bg);color:var(--text);outline:none" placeholder="e.g. Product launch slide for Nepenthes Rajah carnivorous plant, highlight rarity and care tips"></textarea></div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+        <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;flex-shrink:0">Model</label>
+        <select id="ai-model" style="height:28px;border:1.5px solid var(--border);border-radius:var(--r);padding:0 8px;font-size:12px;font-family:var(--font);background:var(--bg);color:var(--text)">
+          <option value="fast">Fast (Llama 8B)</option>
+          <option value="quality">Quality (Llama 70B)</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="ai-gen-btn" onclick="runAiGenerate()">Generate →</button>
+      </div>
+      <div id="ai-result" style="display:none;border:1.5px solid var(--border);border-radius:var(--r);padding:14px;background:var(--surface2)">
+        <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Preview</div>
+        <div id="ai-preview"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn btn-primary btn-sm" onclick="applyAiSlide()">Apply to Slide</button>
+          <button class="btn btn-ghost btn-sm" onclick="runAiGenerate()">Regenerate</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" onclick="document.getElementById('ai-panel-overlay').remove()">Close</button></div>
+  </div>`;
+  document.body.appendChild(el);
+  setTimeout(()=>document.getElementById('ai-prompt')?.focus(),50);
+}
+
+let _aiLastResult=null;
+
+async function runAiGenerate(){
+  const prompt=document.getElementById('ai-prompt')?.value.trim();
+  if(!prompt){toast('Enter a prompt first','err');return;}
+  const model=document.getElementById('ai-model')?.value||'fast';
+  const btn=document.getElementById('ai-gen-btn');
+  if(btn){btn.textContent='Generating…';btn.disabled=true;}
+  try{
+    const brandNames={phytolabs:'Phyto Labs',tcplants:'TC Plants',carnivorousplants:'Carnivorous Plants',all:'Phyto Evolution'};
+    const brandName=brandNames[S.current?.brand]||'Phyto Evolution';
+    const messages=[
+      {role:'system',content:`You are a slide content generator for ${brandName}, a plant and horticulture brand. Generate slide content as a JSON object with these exact fields: "title" (string, max 60 chars), "subtitle" (string, max 100 chars, optional), "bullets" (array of 2-5 strings, max 80 chars each), "notes" (string, speaker notes, optional). Return ONLY valid JSON, no markdown fences, no explanation.`},
+      {role:'user',content:prompt}
+    ];
+    const content=await callWorker(messages,model);
+    if(!content)throw new Error('Empty response from AI');
+    _aiLastResult=JSON.parse(content);
+    const prev=document.getElementById('ai-preview');
+    const res=document.getElementById('ai-result');
+    if(prev&&res){
+      prev.innerHTML=`
+        <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:4px">${escHtml(_aiLastResult.title||'')}</div>
+        ${_aiLastResult.subtitle?`<div style="font-size:13px;color:var(--text2);margin-bottom:8px">${escHtml(_aiLastResult.subtitle)}</div>`:''}
+        ${(_aiLastResult.bullets||[]).map(b=>`<div style="font-size:12px;color:var(--text);padding:2px 0;display:flex;gap:6px"><span style="color:var(--accent);flex-shrink:0">•</span>${escHtml(b)}</div>`).join('')}
+        ${_aiLastResult.notes?`<div style="font-size:11px;color:var(--text3);margin-top:8px;font-style:italic">Notes: ${escHtml(_aiLastResult.notes)}</div>`:''}`;
+      res.style.display='block';
+    }
+  }catch(e){toast('AI error: '+e.message,'err');console.error(e);}
+  finally{if(btn){btn.textContent='Generate →';btn.disabled=false;}}
+}
+
+function applyAiSlide(){
+  if(!_aiLastResult||!S.fc)return;
+  const r=_aiLastResult;
+  const accent=BRAND_COLORS[S.current?.brand]||'#1a6b55';
+  let yOff=0;
+  if(r.title){
+    S.fc.add(new fabric.Textbox(r.title,{left:60,top:60,width:SLIDE_W-120,fontSize:40,fontFamily:'Plus Jakarta Sans',fontWeight:'700',fill:'#1a1a1a',textAlign:'left',editable:true}));
+    yOff=r.subtitle?120:110;
+  }
+  if(r.subtitle){
+    S.fc.add(new fabric.Textbox(r.subtitle,{left:60,top:yOff,width:SLIDE_W-120,fontSize:22,fontFamily:'Plus Jakarta Sans',fontWeight:'400',fill:'#5f6368',textAlign:'left',editable:true}));
+    yOff+=44;
+  }
+  S.fc.add(new fabric.Rect({left:60,top:yOff,width:80,height:4,fill:accent,rx:2,ry:2}));
+  yOff+=20;
+  if(r.bullets?.length){
+    const txt=r.bullets.map(b=>'• '+b).join('\n');
+    S.fc.add(new fabric.Textbox(txt,{left:60,top:yOff,width:SLIDE_W-120,fontSize:20,fontFamily:'Plus Jakarta Sans',fontWeight:'400',fill:'#202124',lineHeight:1.6,textAlign:'left',editable:true}));
+  }
+  if(r.notes){const ta=document.getElementById('notes-ta');if(ta){ta.value=r.notes;saveNotes();}}
+  S.fc.renderAll();
+  pushHistory();
+  toast('AI content applied!','ok');
+  document.getElementById('ai-panel-overlay')?.remove();
+  _aiLastResult=null;
+}
+
+// ===================== PRESENTATION SETTINGS =====================
+function openPresSettings(){
+  if(!S.current){toast('No presentation open','err');return;}
+  if(document.getElementById('pres-settings-overlay')){document.getElementById('pres-settings-overlay').remove();return;}
+  const p=S.current;
+  const brands=[{v:'phytolabs',l:'Phyto Labs'},{v:'tcplants',l:'TC Plants'},{v:'carnivorousplants',l:'Carnivorous Plants'}];
+  const brandOpts=brands.map(b=>`<option value="${b.v}"${p.brand===b.v?' selected':''}>${b.l}</option>`).join('');
+  const fmtDt=s=>s?s.slice(0,16):'';
+  const el=document.createElement('div');
+  el.className='modal-overlay';
+  el.id='pres-settings-overlay';
+  el.innerHTML=`
+  <div class="modal" style="width:440px">
+    <div class="modal-hdr"><div class="modal-title">⚙ Presentation Settings</div><button class="btn-icon" onclick="document.getElementById('pres-settings-overlay').remove()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Title</label><input id="ps-title" type="text" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r);padding:9px 12px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);outline:none" value="${escHtml(p.title||'')}"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group"><label>Brand</label><select id="ps-brand" style="width:100%;height:36px;border:1.5px solid var(--border);border-radius:var(--r);padding:0 10px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text)">${brandOpts}</select></div>
+        <div class="form-group"><label>Status</label><select id="ps-status" style="width:100%;height:36px;border:1.5px solid var(--border);border-radius:var(--r);padding:0 10px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text)">
+          <option value="draft"${p.status==='draft'?' selected':''}>Draft (hidden)</option>
+          <option value="published"${p.status==='published'?' selected':''}>Published (live)</option>
+          <option value="archived"${p.status==='archived'?' selected':''}>Archived</option>
+        </select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group"><label>Visible from</label><input id="ps-from" type="datetime-local" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r);padding:8px 10px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);outline:none" value="${fmtDt(p.visible_from)}"></div>
+        <div class="form-group"><label>Expires</label><input id="ps-exp" type="datetime-local" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r);padding:8px 10px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);outline:none" value="${fmtDt(p.expires)}"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">Slug: <code style="font-size:11px">${escHtml(p.slug)}</code>&ensp;·&ensp;Created: ${p.created?new Date(p.created).toLocaleDateString('en-IN'):'-'}</div>
+    </div>
+    <div class="modal-foot" style="justify-content:space-between">
+      <button class="btn btn-danger btn-sm" onclick="deletePresentation()">Delete Presentation</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" onclick="document.getElementById('pres-settings-overlay').remove()">Cancel</button>
+        <button class="btn btn-primary" onclick="savePresSettings()">Save Settings</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(el);
+}
+
+async function savePresSettings(){
+  const title=document.getElementById('ps-title')?.value.trim();
+  const brand=document.getElementById('ps-brand')?.value;
+  const status=document.getElementById('ps-status')?.value;
+  const vf=document.getElementById('ps-from')?.value||null;
+  const exp=document.getElementById('ps-exp')?.value||null;
+  if(!title){toast('Title is required','err');return;}
+  S.current.title=title;
+  S.current.brand=brand;
+  S.current.status=status;
+  S.current.visible_from=vf||null;
+  S.current.expires=exp||null;
+  const el=document.getElementById('ed-title');
+  if(el)el.value=title;
+  const idx=S.presentations.findIndex(p=>p.slug===S.current.slug);
+  if(idx>=0)Object.assign(S.presentations[idx],{title,brand,status,visible_from:vf||null,expires:exp||null});
+  document.getElementById('pres-settings-overlay')?.remove();
+  try{await saveAll();toast('Settings saved','ok');}
+  catch(e){toast('Save failed: '+e.message,'err');}
+}
+
+async function deletePresentation(){
+  if(!S.current)return;
+  if(!confirm(`Delete "${S.current.title}"?\n\nThis removes it from the catalogue. The encrypted file remains in the repo — delete it manually if needed.`))return;
+  document.getElementById('pres-settings-overlay')?.remove();
+  try{
+    S.presentations=S.presentations.filter(p=>p.slug!==S.current.slug);
+    await saveCatalogue();
+    toast('Deleted from catalogue','ok');
+    S.dirty=false;
+    backToDash();
+  }catch(e){toast('Delete failed: '+e.message,'err');}
 }
 
 // ===================== KEYBOARD SHORTCUTS =====================
