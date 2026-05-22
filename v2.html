@@ -420,11 +420,8 @@ function mountAuth(){
         <h2>Sign in</h2>
         <p>Use your GitHub personal access token with <code>repo</code> scope to manage presentations.</p>
         <div class="form-group"><label>GitHub PAT</label><input id="pat-inp" type="password" placeholder="ghp_…" autocomplete="off" value="${S.pat}"></div>
-        <div class="form-group"><label>AI Worker URL</label><input id="worker-inp" type="url" placeholder="https://…workers.dev" value="${S.workerUrl}"></div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-primary" onclick="handleAuth()">Continue →</button>
-          <span style="font-size:12px;color:var(--text3)">Worker URL is optional (needed for AI generation)</span>
-        </div>
+        <div class="form-group"><label>AI Worker URL <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">(optional)</span></label><input id="worker-inp" type="url" placeholder="https://…workers.dev" value="${S.workerUrl}"></div>
+        <button class="btn btn-primary" onclick="handleAuth()">Continue →</button>
         <div class="auth-err" id="auth-err"></div>
       </div>
     </div>
@@ -1497,32 +1494,156 @@ async function exportPPTX(){
   }catch(e){toast('PPTX error: '+e.message,'err');}
 }
 
+// ===================== VIEW ENCRYPTION =====================
+// Each published presentation gets its own random 256-bit key.
+// Slides are bundled into one data.enc file — no raw images in the repo.
+// The key lives in the share URL fragment (#k=…) which is never sent to any server.
+
+function generateViewKey(){
+  return Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function encryptForView(plaintext,hexKey){
+  const keyBytes=Uint8Array.from(hexKey.match(/.{2}/g),h=>parseInt(h,16));
+  const ck=await crypto.subtle.importKey('raw',keyBytes,'AES-GCM',false,['encrypt']);
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},ck,new TextEncoder().encode(plaintext));
+  const buf=new Uint8Array(12+ct.byteLength);
+  buf.set(iv,0);buf.set(new Uint8Array(ct),12);
+  return btoa(String.fromCharCode(...buf));
+}
+
 async function publishReveal(){
   if(!S.fc||!S.slides.length){toast('Nothing to publish','err');return;}
-  toast('Publishing…','info',15000);
+  toast('Rendering slides…','info',30000);
   saveCurSlide();
   try{
     const slug=S.current.slug;
-    const imgPaths=[];
+    // Reuse existing key or generate new one
+    if(!S.current.viewKey)S.current.viewKey=generateViewKey();
+    const viewKey=S.current.viewKey;
+
+    // Render all slides to JPEG
+    const slideImgs=[];
     for(let i=0;i<S.slides.length;i++){
-      const imgData=await renderSlideImg(S.slides[i],1);
-      const path=`view/${slug}/slides/slide-${i+1}.jpg`;
-      // Check if exists for SHA
-      const existing=await ghTryGet(path);
-      const clean=imgData.replace(/^data:image\/jpeg;base64,/,'');
-      await ghPut(path,atob(clean),`Publish slide ${i+1}: ${slug}`,existing?.sha);
-      imgPaths.push(`slides/slide-${i+1}.jpg`);
+      toast(`Rendering slide ${i+1}/${S.slides.length}…`,'info',10000);
+      slideImgs.push(await renderSlideImg(S.slides[i],1));
     }
-    const html=buildRevealHtml(slug,imgPaths);
-    const existing=await ghTryGet(`view/${slug}/index.html`);
-    await ghPut(`view/${slug}/index.html`,html,`Publish: ${S.current.title}`,existing?.sha);
-    // Update status
+
+    // Bundle + encrypt into one data.enc
+    toast('Encrypting…','info',10000);
+    const bundle={title:S.current.title,brand:S.current.brand,slides:slideImgs,notes:S.slides.map(s=>s.notes||'')};
+    const enc=await encryptForView(JSON.stringify(bundle),viewKey);
+
+    // Save data.enc (no raw images anywhere in repo)
+    const dataPath=`view/${slug}/data.enc`;
+    const exData=await ghTryGet(dataPath);
+    await ghPut(dataPath,enc,`Publish data: ${S.current.title}`,exData?.sha);
+
+    // Save viewer HTML (self-contained, key-gated)
+    const html=buildViewerHtml(S.current.title,S.current.brand);
+    const exHtml=await ghTryGet(`view/${slug}/index.html`);
+    await ghPut(`view/${slug}/index.html`,html,`Publish viewer: ${S.current.title}`,exHtml?.sha);
+
+    // Update status + persist key in encrypted store
     S.current.status='published';
+    S.current.slides=S.slides;
     const idx=S.presentations.findIndex(p=>p.slug===slug);
-    if(idx>=0)S.presentations[idx].status='published';
-    await saveAll();
-    toast('Published! Live at /catalogue/','ok',6000);
-  }catch(e){toast('Publish error: '+e.message,'err');}
+    if(idx>=0){S.presentations[idx].status='published';S.presentations[idx].viewKey=viewKey;}
+    await savePresJSON(S.current);
+    await saveCatalogue();
+
+    const shareUrl=`https://shiva16.github.io/phyto-studio/view/${slug}/#k=${viewKey}`;
+    navigator.clipboard?.writeText(shareUrl).catch(()=>{});
+    showShareModal(shareUrl);
+  }catch(e){toast('Publish error: '+e.message,'err');console.error(e);}
+}
+
+function buildViewerHtml(title,brand){
+  const names={phytolabs:'Phyto Labs',tcplants:'TC Plants',carnivorousplants:'Carnivorous Plants'};
+  const bName=names[brand]||'Phyto Evolution';
+  return`<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>${title} — ${bName}</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:#111;height:100vh;overflow:hidden}
+#lock{display:none;flex-direction:column;align-items:center;justify-content:center;height:100vh;color:#fff;gap:14px;text-align:center;padding:32px}
+#lock .lk-icon{font-size:52px}
+#lock h2{font-size:22px;font-weight:600}
+#lock p{font-size:13px;color:rgba(255,255,255,.5);max-width:300px;line-height:1.6}
+#ps-bar{position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(27,58,47,.96);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:42px;font-size:13px;color:rgba(255,255,255,.7)}
+#ps-bar strong{color:#fff;font-weight:600}
+#ps-bar a{color:rgba(255,255,255,.5);text-decoration:none;font-size:12px}
+#ps-bar a:hover{color:#fff}
+#reveal-root{display:none}
+.reveal .slides{margin-top:42px}
+</style>
+</head>
+<body>
+<div id="lock"><div class="lk-icon">🔒</div><h2>Protected Presentation</h2><p>You need a valid access link from ${bName} to view this content.</p></div>
+<div id="reveal-root">
+  <div id="ps-bar"><strong>${bName}</strong><span>${title}</span><a href="https://shiva16.github.io/phyto-studio/catalogue/">← All Catalogues</a></div>
+  <div class="reveal"><div class="slides" id="slides-root"></div></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+<script>
+(async()=>{
+  const m=location.hash.match(/[#&]k=([0-9a-f]{64})/);
+  if(!m){document.getElementById('lock').style.display='flex';return;}
+  try{
+    const ck=await crypto.subtle.importKey('raw',Uint8Array.from(m[1].match(/.{2}/g),h=>parseInt(h,16)),'AES-GCM',false,['decrypt']);
+    const res=await fetch('./data.enc');
+    if(!res.ok)throw new Error('not found');
+    const buf=Uint8Array.from(atob(await res.text()),c=>c.charCodeAt(0));
+    const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:buf.slice(0,12)},ck,buf.slice(12));
+    const d=JSON.parse(new TextDecoder().decode(pt));
+    const root=document.getElementById('slides-root');
+    d.slides.forEach((img,i)=>{
+      const sec=document.createElement('section');
+      const raw=img.includes(',')?img.split(',')[1]:img;
+      const blob=new Blob([Uint8Array.from(atob(raw),c=>c.charCodeAt(0))],{type:'image/jpeg'});
+      sec.setAttribute('data-background-image',URL.createObjectURL(blob));
+      sec.setAttribute('data-background-size','cover');
+      if(d.notes?.[i]){const n=document.createElement('aside');n.className='notes';n.textContent=d.notes[i];sec.appendChild(n);}
+      root.appendChild(sec);
+    });
+    document.getElementById('lock').style.display='none';
+    document.getElementById('reveal-root').style.display='block';
+    Reveal.initialize({hash:false,controls:true,progress:true,transition:'slide',touch:true,margin:0});
+  }catch(e){
+    const l=document.getElementById('lock');
+    l.querySelector('h2').textContent='Invalid or expired link.';
+    l.querySelector('p').textContent='Contact ${bName} for a valid access link.';
+    l.style.display='flex';
+  }
+  document.addEventListener('contextmenu',e=>e.preventDefault());
+  document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&'ps'.includes(e.key))e.preventDefault();});
+})();
+<\/script>
+</body></html>`;
+}
+
+function showShareModal(url){
+  const el=document.createElement('div');
+  el.className='modal-overlay';
+  el.innerHTML=`
+  <div class="modal">
+    <div class="modal-hdr"><div class="modal-title">Published ✓</div><button class="btn-icon" onclick="this.closest('.modal-overlay').remove()">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Share this link. The decryption key is in the URL fragment — without it, the page shows a lock screen. Slide data in the repo is AES-encrypted and unreadable.</p>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="share-url-inp" type="text" value="${url}" readonly style="flex:1;height:32px;border:1px solid var(--border);border-radius:var(--r);padding:0 10px;font-size:11px;font-family:monospace;background:var(--surface2);color:var(--text)">
+        <button class="btn btn-primary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('share-url-inp').value).then(()=>this.textContent='Copied ✓')">Copy</button>
+      </div>
+      <p style="font-size:11px;color:var(--text3);margin-top:10px">⚠ Anyone with this exact URL can view the presentation. Keep it in trusted hands.</p>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Close</button></div>
+  </div>`;
+  document.body.appendChild(el);
 }
 
 async function renderSlideImg(slide,scale=1){
@@ -1540,43 +1661,6 @@ async function renderSlideImg(slide,scale=1){
     });
   });
 }
-
-function buildRevealHtml(slug,imgPaths){
-  const pres=S.current;
-  const brand=pres?.brand||'all';
-  const slides=imgPaths.map((p,i)=>`
-  <section data-background-image="${p}" data-background-size="cover">
-    ${S.slides[i]?.notes?`<aside class="notes">${S.slides[i].notes}</aside>`:''}</section>`).join('');
-  return`<!DOCTYPE html>
-<html lang="en"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${pres?.title||slug}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css">
-<style>
-  #ps-bar{position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(27,58,47,.95);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-between;padding:0 1.5em;height:42px;font-family:'Inter',sans-serif;font-size:.8em;color:rgba(255,255,255,.7);}
-  #ps-bar .logo{color:#fff;font-weight:600;font-size:1.1em;}
-  #ps-bar a{color:rgba(255,255,255,.6);text-decoration:none;}
-  #ps-bar a:hover{color:#fff;}
-  .reveal .slides{margin-top:42px;}
-</style>
-</head>
-<body>
-<div id="ps-bar">
-  <span class="logo">Phyto Studio</span>
-  <span>${pres?.title||slug}</span>
-  <a href="https://shiva16.github.io/phyto-studio/catalogue/">← All Catalogues</a>
-</div>
-<div class="reveal"><div class="slides">${slides}</div></div>
-<script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
-<script>
-  Reveal.initialize({hash:true,transition:'slide',controls:true,progress:true,touch:true,margin:0});
-  document.addEventListener('contextmenu',e=>e.preventDefault());
-  document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&(e.key==='p'||e.key==='s'))e.preventDefault();});
-<\/script>
-</body></html>`;
 }
 
 // ===================== KEYBOARD SHORTCUTS =====================
