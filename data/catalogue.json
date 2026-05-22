@@ -1,57 +1,41 @@
 {
   "presentations": [
     {
-      "id": "demo-phytolabs-2026",
       "slug": "phytolabs-services-2026",
-      "title": "Phyto Labs — Services & Capabilities 2026",
+      "title": "Phyto Labs â Services & Capabilities 2026",
       "brand": "phytolabs",
-      "project": "Company Overview",
-      "description": "A complete overview of Phyto Labs tissue culture and laboratory services for B2B partners.",
-      "created": "2026-05-22",
-      "updated": "2026-05-22",
-      "expires": null,
       "status": "published",
-      "slideCount": 7
+      "expires": null,
+      "created": "2026-05-22",
+      "updated": "2026-05-22"
     },
     {
-      "id": "demo-tcplants-2026",
       "slug": "tcplants-catalogue-2026",
-      "title": "TC Plants — Lab-Grown Plant Catalogue 2026",
+      "title": "TC Plants â Lab-Grown Plant Catalogue 2026",
       "brand": "tcplants",
-      "project": "Product Catalogue",
-      "description": "Our full range of tissue culture propagated plants available for bulk and retail orders.",
-      "created": "2026-05-22",
-      "updated": "2026-05-22",
-      "expires": null,
       "status": "published",
-      "slideCount": 6
+      "expires": null,
+      "created": "2026-05-22",
+      "updated": "2026-05-22"
     },
     {
-      "id": "demo-cp-2026",
       "slug": "carnivorous-plants-catalogue-2026",
-      "title": "Carnivorous Plants — Collector Catalogue 2026",
+      "title": "Carnivorous Plants â Collector Catalogue 2026",
       "brand": "carnivorousplants",
-      "project": "Product Catalogue",
-      "description": "India's exclusive carnivorous plant collection — Nepenthes, Sarracenia, Dionaea and more.",
-      "created": "2026-05-22",
-      "updated": "2026-05-22",
-      "expires": null,
       "status": "published",
-      "slideCount": 6
+      "expires": null,
+      "created": "2026-05-22",
+      "updated": "2026-05-22"
     },
     {
-      "id": "432e0fd4-16e9-4b42-bd09-0011abed47c0",
       "slug": "nepenthes-sales-2026-06",
       "title": "Nepenthes sales 2026-06",
       "brand": "carnivorousplants",
-      "project": "test",
-      "description": "Nepenthes hybrid clerance sales",
+      "status": "published",
       "visible_from": "2026-05-22T16:36",
       "expires": "2026-05-23T16:36",
-      "status": "published",
       "created": "2026-05-22",
-      "updated": "2026-05-22",
-      "slideCount": 1
+      "updated": "2026-05-22"
     }
   ]
 }
