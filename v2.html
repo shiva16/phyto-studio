@@ -376,7 +376,15 @@ async function ghPutEnc(path,data,msg,sha){
   const res=await ghPut(path,enc,msg,sha);    // ghPut UTF-8-encodes it for the API
   return res;
 }
-async function ghTryGetEnc(path){try{return await ghGetEnc(path)}catch{return null}}
+async function ghTryGetEnc(path){
+  try{return await ghGetEnc(path);}
+  catch(e){
+    if(e instanceof DOMException&&e.name==='OperationError'){
+      toast('Decryption failed — this file was probably saved with a different PAT. Sign out and sign in with the correct token.','warn',10000);
+    }
+    return null;
+  }
+}
 
 // ---- Catalogue (.enc) ----
 // data/catalogue.enc  — encrypted, all presentations (studio only)
@@ -787,6 +795,7 @@ async function openEditor(slug){
       <div class="ed-hdr-right">
         <span class="ed-save-badge" id="save-badge"></span>
         <button class="btn btn-ghost btn-sm" onclick="openAiPanel()" title="AI Content Generator">* AI</button>
+        <button class="btn btn-ghost btn-sm" onclick="openShortcutsPanel()" title="Keyboard shortcuts (?)">?</button>
         <button class="btn btn-ghost btn-sm" onclick="openPresSettings()" title="Presentation settings">⚙</button>
         <button class="btn btn-ghost btn-sm" onclick="cycleTheme()">◑</button>
         <button class="btn btn-secondary btn-sm" onclick="exportPPTX()">↓ PPTX</button>
@@ -1979,18 +1988,30 @@ async function savePresSettings(){
   const vf=document.getElementById('ps-from')?.value||null;
   const exp=document.getElementById('ps-exp')?.value||null;
   if(!title){toast('Title is required','err');return;}
-  S.current.title=title;
-  S.current.brand=brand;
-  S.current.status=status;
-  S.current.visible_from=vf||null;
-  S.current.expires=exp||null;
-  const el=document.getElementById('ed-title');
-  if(el)el.value=title;
+  if(S.saving)return;
+  // Update S.current metadata
+  Object.assign(S.current,{title,brand,status,visible_from:vf||null,expires:exp||null,updated:new Date().toISOString()});
+  const edTitle=document.getElementById('ed-title');
+  if(edTitle)edTitle.value=title;
   const idx=S.presentations.findIndex(p=>p.slug===S.current.slug);
-  if(idx>=0)Object.assign(S.presentations[idx],{title,brand,status,visible_from:vf||null,expires:exp||null});
+  if(idx>=0)Object.assign(S.presentations[idx],{title,brand,status,visible_from:vf||null,expires:exp||null,updated:S.current.updated});
   document.getElementById('pres-settings-overlay')?.remove();
-  try{await saveAll();toast('Settings saved','ok');}
-  catch(e){toast('Save failed: '+e.message,'err');}
+  const badge=document.getElementById('save-badge');
+  if(badge)badge.textContent='Saving…';
+  S.saving=true;
+  const wasDirty=S.dirty;
+  try{
+    saveCurSlide(); // capture current canvas state
+    S.current.slides=S.slides;
+    await savePresJSON(S.current);
+    await saveCatalogue();
+    setDirty(false);
+    toast('Settings saved','ok');
+  }catch(e){
+    toast('Save failed: '+e.message,'err');
+    setDirty(wasDirty);
+  }
+  S.saving=false;
 }
 
 async function deletePresentation(){
@@ -2034,9 +2055,13 @@ document.addEventListener('keydown',e=>{
   }
   if(e.key==='PageUp'){e.preventDefault();if(S.curSlide>0)switchSlide(S.curSlide-1);return;}
   if(e.key==='PageDown'){e.preventDefault();if(S.curSlide<S.slides.length-1)switchSlide(S.curSlide+1);return;}
+  if(e.key==='?'&&!isTyping()){openShortcutsPanel();return;}
   if(isTyping())return;
   if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();doDelete();return;}
-  if(e.key==='Escape'){S.fc?.discardActiveObject();S.fc?.renderAll();setTool('select');return;}
+  if(e.key==='Escape'){
+    if(document.getElementById('preview-overlay')){document.getElementById('preview-overlay').remove();return;}
+    S.fc?.discardActiveObject();S.fc?.renderAll();setTool('select');return;
+  }
   if(e.key==='v'||e.key==='V'){setTool('select');return;}
   if(e.key==='t'||e.key==='T'){setTool('text');return;}
   // Arrow keys for nudging
@@ -2124,6 +2149,7 @@ function openCardInfo(slug){
     <div class="modal-foot" style="justify-content:space-between">
       <button class="btn btn-danger btn-sm" onclick="deleteFromDash('${escHtml(p.slug)}')">Delete</button>
       <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('card-info-overlay').remove();openPresPreview('${escHtml(p.slug)}')">Preview slides</button>
         <button class="btn btn-secondary" onclick="saveCardMeta('${escHtml(p.slug)}')">Save Metadata</button>
         <button class="btn btn-primary" onclick="document.getElementById('card-info-overlay').remove();openEditor('${escHtml(p.slug)}')">Open in Editor →</button>
       </div>
@@ -2172,6 +2198,129 @@ async function deleteFromDash(slug){
     renderDashGrid(S.presentations);
   }catch(e){toast('Delete failed: '+e.message,'err');}
 }
+
+// ===================== KEYBOARD SHORTCUTS PANEL =====================
+function openShortcutsPanel(){
+  if(document.getElementById('shortcuts-overlay')){document.getElementById('shortcuts-overlay').remove();return;}
+  const el=document.createElement('div');
+  el.className='modal-overlay';
+  el.id='shortcuts-overlay';
+  const row=(kb,desc)=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">${desc}</span><kbd style="font-size:11px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 6px;font-family:monospace;white-space:nowrap">${kb}</kbd></div>`;
+  const hdr=(t)=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin:14px 0 6px">${t}</div>`;
+  el.innerHTML=`
+  <div class="modal" style="width:460px;max-height:80vh;overflow-y:auto">
+    <div class="modal-hdr"><div class="modal-title">Keyboard Shortcuts</div><button class="btn-icon" onclick="document.getElementById('shortcuts-overlay').remove()">✕</button></div>
+    <div class="modal-body" style="padding-bottom:20px">
+      ${hdr('File')}
+      ${row('Ctrl+S','Save')}
+      ${hdr('Edit')}
+      ${row('Ctrl+Z','Undo')}
+      ${row('Ctrl+Y / Ctrl+Shift+Z','Redo')}
+      ${row('Ctrl+C','Copy')}
+      ${row('Ctrl+V','Paste')}
+      ${row('Ctrl+D','Duplicate')}
+      ${row('Ctrl+A','Select all')}
+      ${row('Delete / Backspace','Delete selected')}
+      ${row('Escape','Deselect / close')}
+      ${hdr('Tools')}
+      ${row('V','Select tool')}
+      ${row('T','Text tool')}
+      ${hdr('Formatting')}
+      ${row('Ctrl+B','Bold')}
+      ${row('Ctrl+I','Italic')}
+      ${row('Ctrl+U','Underline')}
+      ${hdr('Arrange')}
+      ${row('Ctrl+G','Group')}
+      ${row('Ctrl+Shift+G','Ungroup')}
+      ${hdr('Slides')}
+      ${row('Ctrl+M','New slide')}
+      ${row('PageUp','Previous slide')}
+      ${row('PageDown','Next slide')}
+      ${hdr('Canvas')}
+      ${row('Arrow keys','Nudge 1px')}
+      ${row('Shift+Arrow','Nudge 10px')}
+      ${hdr('Help')}
+      ${row('?','Show this panel')}
+    </div>
+  </div>`;
+  el.addEventListener('click',e=>{if(e.target===el)el.remove();});
+  document.body.appendChild(el);
+}
+
+// ===================== PRESENTATION PREVIEW =====================
+let _pvData=null;
+let _pvIdx=0;
+
+async function openPresPreview(slug){
+  toast('Loading…','info',5000);
+  let data;
+  try{data=await loadPresJSON(slug);}
+  catch(e){toast('Load failed: '+e.message,'err');return;}
+  const slides=data.slides||[];
+  if(!slides.length){toast('No slides to preview','err');return;}
+
+  document.getElementById('preview-overlay')?.remove();
+  const el=document.createElement('div');
+  el.id='preview-overlay';
+  el.style.cssText='position:fixed;inset:0;background:#111;z-index:20000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px';
+  el.innerHTML=`
+    <div style="position:absolute;top:0;left:0;right:0;height:46px;background:rgba(0,0,0,.5);display:flex;align-items:center;padding:0 16px;gap:12px">
+      <span style="font-size:13px;font-weight:600;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(data.title||slug)}</span>
+      <span id="pv-counter" style="font-size:12px;color:rgba(255,255,255,.5)">Rendering…</span>
+      <button onclick="document.getElementById('preview-overlay').remove()" style="background:rgba(255,255,255,.12);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div id="pv-slide" style="margin-top:46px;display:flex;align-items:center;justify-content:center;flex:1;width:100%">
+      <div style="color:rgba(255,255,255,.35);font-size:13px">Rendering slides…</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;padding-bottom:20px">
+      <button onclick="pvNav(-1)" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:8px 22px;border-radius:4px;cursor:pointer;font-size:13px;font-family:var(--font)">← Prev</button>
+      <div id="pv-dots" style="display:flex;gap:6px"></div>
+      <button onclick="pvNav(1)" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:8px 22px;border-radius:4px;cursor:pointer;font-size:13px;font-family:var(--font)">Next →</button>
+    </div>`;
+  document.body.appendChild(el);
+
+  // Render all slides to images
+  const imgs=[];
+  for(let i=0;i<slides.length;i++){
+    const counter=document.getElementById('pv-counter');
+    if(counter)counter.textContent=`${i+1}/${slides.length}`;
+    imgs.push(await renderSlideImg(slides[i],0.75));
+  }
+
+  _pvData=imgs;
+  _pvIdx=0;
+  pvRender();
+
+  // Keyboard navigation within preview
+  el.setAttribute('tabindex','0');
+  el.focus();
+  el.addEventListener('keydown',e=>{
+    if(e.key==='ArrowLeft'||e.key==='ArrowUp')pvNav(-1);
+    else if(e.key==='ArrowRight'||e.key==='ArrowDown')pvNav(1);
+    else if(e.key==='Escape')el.remove();
+  });
+}
+
+function pvRender(){
+  const imgs=_pvData;
+  if(!imgs)return;
+  const total=imgs.length;
+  const i=_pvIdx;
+  const slideEl=document.getElementById('pv-slide');
+  if(slideEl)slideEl.innerHTML=`<img src="${imgs[i]}" style="max-width:calc(100vw - 40px);max-height:calc(100vh - 140px);border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,.7);display:block">`;
+  const counter=document.getElementById('pv-counter');
+  if(counter)counter.textContent=`${i+1} / ${total}`;
+  const dots=document.getElementById('pv-dots');
+  if(dots)dots.innerHTML=imgs.map((_,j)=>`<div onclick="pvGoto(${j})" style="width:${j===i?18:7}px;height:7px;border-radius:4px;background:${j===i?'#fff':'rgba(255,255,255,.3)'};cursor:pointer;transition:all .15s"></div>`).join('');
+}
+
+function pvNav(dir){
+  if(!_pvData)return;
+  _pvIdx=Math.max(0,Math.min(_pvData.length-1,_pvIdx+dir));
+  pvRender();
+}
+
+function pvGoto(i){_pvIdx=i;pvRender();}
 
 // ===================== INIT =====================
 function init(){
