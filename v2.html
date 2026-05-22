@@ -267,6 +267,7 @@ const S={
   notesOpen:false,
   isDrawing:false, drawStart:null, drawObj:null,
   menuOpen:null,
+  aesKey:null,       // CryptoKey derived from PAT
 };
 
 // ===================== UTILS =====================
@@ -298,6 +299,33 @@ function setTheme(t){
   localStorage.setItem('ps_theme',t);
 }
 
+// ===================== AES-256-GCM ENCRYPTION =====================
+// Key is derived from the PAT — the PAT is the only secret; it never touches the repo.
+// Encrypted files are AES-GCM: [12-byte IV][ciphertext], base64-encoded.
+// Repo files are unreadable without the PAT even if the repo is public.
+
+async function deriveKey(pat){
+  const raw=await crypto.subtle.importKey('raw',new TextEncoder().encode(pat),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey(
+    {name:'PBKDF2',salt:new TextEncoder().encode('phyto-studio-2026'),iterations:100000,hash:'SHA-256'},
+    raw,{name:'AES-GCM',length:256},false,['encrypt','decrypt']
+  );
+}
+
+async function aesEncrypt(plaintext){
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},S.aesKey,new TextEncoder().encode(plaintext));
+  const buf=new Uint8Array(12+ct.byteLength);
+  buf.set(iv,0);buf.set(new Uint8Array(ct),12);
+  return btoa(String.fromCharCode(...buf));
+}
+
+async function aesDecrypt(b64){
+  const buf=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:buf.slice(0,12)},S.aesKey,buf.slice(12));
+  return new TextDecoder().decode(pt);
+}
+
 // ===================== GITHUB API =====================
 async function ghGet(path){
   const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`,{
@@ -318,22 +346,57 @@ async function ghPut(path,content,msg,sha){
 }
 async function ghTryGet(path){try{return await ghGet(path)}catch{return null}}
 
+// Encrypted read/write — all studio data goes through these
+async function ghGetEnc(path){
+  const f=await ghGet(path);
+  const b64=atob(f.content.replace(/\n/g,''));
+  const plain=await aesDecrypt(b64);
+  return{data:JSON.parse(plain),sha:f.sha};
+}
+async function ghPutEnc(path,data,msg,sha){
+  const plain=JSON.stringify(data,null,2);
+  const enc=await aesEncrypt(plain);          // base64 string (ASCII)
+  const res=await ghPut(path,enc,msg,sha);    // ghPut UTF-8-encodes it for the API
+  return res;
+}
+async function ghTryGetEnc(path){try{return await ghGetEnc(path)}catch{return null}}
+
+// ---- Catalogue (.enc) ----
+// data/catalogue.enc  — encrypted, all presentations (studio only)
+// data/catalogue.json — plain, published-only summary (public viewer)
 async function loadCatalogue(){
-  const f=await ghTryGet('data/catalogue.json');
-  if(f){const d=JSON.parse(atob(f.content));S.presentations=d.presentations||[];S.catSha=f.sha;}
-  else{S.presentations=[];S.catSha=null;}
+  const r=await ghTryGetEnc('data/catalogue.enc');
+  if(r){S.presentations=r.data.presentations||[];S.catSha=r.sha;}
+  else{
+    // First run or legacy: try plain catalogue.json and migrate
+    const f=await ghTryGet('data/catalogue.json');
+    if(f){const d=JSON.parse(atob(f.content.replace(/\n/g,'')));S.presentations=d.presentations||[];}
+    else S.presentations=[];
+    S.catSha=null;
+  }
 }
 async function saveCatalogue(){
-  const res=await ghPut('data/catalogue.json',JSON.stringify({presentations:S.presentations},null,2),'Update catalogue',S.catSha);
+  const res=await ghPutEnc('data/catalogue.enc',{presentations:S.presentations},'Update catalogue',S.catSha);
   S.catSha=res.content.sha;
+  // Also update the plain public catalogue (published only, no draft/sensitive data)
+  await updatePublicCatalogue();
 }
+async function updatePublicCatalogue(){
+  const pub=S.presentations
+    .filter(p=>p.status==='published')
+    .map(({slug,title,brand,status,visible_from,expires,created,updated})=>({slug,title,brand,status,visible_from,expires,created,updated}));
+  const existing=await ghTryGet('data/catalogue.json');
+  await ghPut('data/catalogue.json',JSON.stringify({presentations:pub},null,2),'Update public catalogue',existing?.sha);
+}
+
+// ---- Presentation (.enc) ----
 async function loadPresJSON(slug){
-  const f=await ghGet(`data/presentations/${slug}.json`);
-  const d=JSON.parse(atob(f.content));d._sha=f.sha;return d;
+  const r=await ghGetEnc(`data/presentations/${slug}.enc`);
+  r.data._sha=r.sha;return r.data;
 }
 async function savePresJSON(pres){
-  const {_sha,...data}=pres;
-  const res=await ghPut(`data/presentations/${pres.slug}.json`,JSON.stringify(data,null,2),`Save: ${pres.title}`,_sha||undefined);
+  const{_sha,...data}=pres;
+  const res=await ghPutEnc(`data/presentations/${pres.slug}.enc`,data,`Save: ${pres.title}`,_sha||undefined);
   pres._sha=res.content.sha;
 }
 
@@ -378,6 +441,8 @@ async function handleAuth(){
   try{
     const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}`,{headers:{Authorization:`token ${pat}`}});
     if(!r.ok){err.textContent='Invalid PAT or no repo access';return;}
+    err.textContent='Deriving encryption key…';
+    S.aesKey=await deriveKey(pat);
     S.pat=pat;sessionStorage.setItem('ps_pat',pat);
     if(worker){S.workerUrl=worker;localStorage.setItem('ps_worker',worker);}
     err.textContent='';
@@ -1562,7 +1627,8 @@ document.addEventListener('keydown',e=>{
 function init(){
   setTheme(S.theme);
   if(S.pat){
-    loadCatalogue().then(()=>mountDashboard()).catch(()=>mountAuth());
+    // Re-derive key from stored PAT before loading encrypted data
+    deriveKey(S.pat).then(k=>{S.aesKey=k;return loadCatalogue();}).then(()=>mountDashboard()).catch(()=>mountAuth());
   }else{
     mountAuth();
   }
