@@ -38,6 +38,20 @@
       "expires": null,
       "status": "published",
       "slideCount": 6
+    },
+    {
+      "id": "432e0fd4-16e9-4b42-bd09-0011abed47c0",
+      "slug": "nepenthes-sales-2026-06",
+      "title": "Nepenthes sales 2026-06",
+      "brand": "carnivorousplants",
+      "project": "test",
+      "description": "Nepenthes hybrid clerance sales",
+      "visible_from": "2026-05-22T16:36",
+      "expires": "2026-05-23T16:36",
+      "status": "published",
+      "created": "2026-05-22",
+      "updated": "2026-05-22",
+      "slideCount": 1
     }
   ]
 }
