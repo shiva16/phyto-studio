@@ -31,6 +31,7 @@
   --text:#2e2e2e;--text2:#657b83;--text3:#93a1a1;--canvas-area:#d4c99a;
 }
 html,body{height:100%;font-family:var(--font);font-size:14px;color:var(--text);background:var(--bg);overflow:hidden;-webkit-font-smoothing:antialiased}
+input,select,textarea,button{font-family:inherit}
 
 /* ---- BUTTONS ---- */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r);border:none;font-size:13px;font-weight:500;font-family:var(--font);cursor:pointer;transition:background .15s,opacity .15s;white-space:nowrap;line-height:1}
@@ -390,14 +391,30 @@ async function updatePublicCatalogue(){
 }
 
 // ---- Presentation (.enc) ----
+// Falls back to plain .json for presentations saved before encryption was added.
 async function loadPresJSON(slug){
-  const r=await ghGetEnc(`data/presentations/${slug}.enc`);
-  r.data._sha=r.sha;return r.data;
+  const enc=await ghTryGetEnc(`data/presentations/${slug}.enc`);
+  if(enc){enc.data._sha=enc.sha;return enc.data;}
+  // Legacy plain .json — load and migrate on next save
+  const f=await ghGet(`data/presentations/${slug}.json`);
+  const d=JSON.parse(atob(f.content.replace(/\n/g,'')));
+  d._sha=null; d._legacySha=f.sha; d._legacyPath=`data/presentations/${slug}.json`;
+  return d;
 }
 async function savePresJSON(pres){
-  const{_sha,...data}=pres;
+  const{_sha,_legacySha,_legacyPath,...data}=pres;
   const res=await ghPutEnc(`data/presentations/${pres.slug}.enc`,data,`Save: ${pres.title}`,_sha||undefined);
   pres._sha=res.content.sha;
+  // If this was a legacy .json file, delete it now that we've migrated to .enc
+  if(_legacyPath&&_legacySha){
+    try{
+      await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${_legacyPath}`,{
+        method:'DELETE',
+        headers:{Authorization:`token ${S.pat}`,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},
+        body:JSON.stringify({message:`Migrate to encrypted: ${pres.slug}`,sha:_legacySha,branch:GH_BRANCH})
+      });
+    }catch{}
+  }
 }
 
 // ===================== AUTH VIEW =====================
@@ -482,14 +499,22 @@ function renderDashGrid(list){
     <div class="new-card-plus">＋</div><div class="new-card-lbl">New Presentation</div></div>`;
   filtered.slice().reverse().forEach(p=>{
     const meta=statusMeta(p);
-    html+=`<div class="pres-card" onclick="openEditor('${p.slug}')">
-      <div class="card-thumb"><div class="card-thumb-empty">🗂</div></div>
+    const hasShare=p.status==='published'&&p.viewKey;
+    html+=`<div class="pres-card">
+      <div class="card-thumb" onclick="openEditor('${p.slug}')"><div class="card-thumb-empty">🗂</div></div>
       <div class="card-info">
-        <div class="card-title">${escHtml(p.title)}</div>
+        <div class="card-title" onclick="openEditor('${p.slug}')" style="cursor:pointer">${escHtml(p.title)}</div>
         <div class="card-meta">
           <span class="status-pip ${meta.cls}"></span>
           <span>${meta.label}</span>
           <span class="brand-tag">${p.brand||'all'}</span>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <button class="btn btn-secondary btn-sm" style="flex:1" onclick="openEditor('${p.slug}')">Edit</button>
+          ${hasShare
+            ? `<button class="btn btn-primary btn-sm" style="flex:1" onclick="copyShareLink('${p.slug}','${p.viewKey}')">Share link</button>`
+            : `<button class="btn btn-ghost btn-sm" style="flex:1;opacity:.5" disabled title="Publish first to get a share link">Share link</button>`
+          }
         </div>
       </div>
     </div>`;
@@ -500,6 +525,13 @@ function renderDashGrid(list){
 function filterDash(q){
   const filtered=S.presentations.filter(p=>p.title.toLowerCase().includes(q.toLowerCase()));
   renderDashGrid(filtered);
+}
+
+function copyShareLink(slug,viewKey){
+  const url=`https://shiva16.github.io/phyto-studio/view/${slug}/#k=${viewKey}`;
+  navigator.clipboard.writeText(url).then(()=>toast('Share link copied!','ok')).catch(()=>{
+    prompt('Copy this link:',url);
+  });
 }
 
 function statusMeta(p){
@@ -1230,7 +1262,7 @@ function updateToolbar(){
   document.getElementById('tb-italic')?.classList.toggle('active',isText&&obj.fontStyle==='italic');
   document.getElementById('tb-underline')?.classList.toggle('active',isText&&!!obj.underline);
   const fnt=document.getElementById('tb-font');
-  if(fnt&&isText)fnt.value=obj.fontFamily||'Inter';
+  if(fnt&&isText)fnt.value=obj.fontFamily||'Plus Jakarta Sans';
   const fsz=document.getElementById('tb-size');
   if(fsz&&isText)fsz.value=obj.fontSize||24;
   if(obj)updateSwatches(obj);
