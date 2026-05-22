@@ -83,7 +83,7 @@ input,select,textarea,button{font-family:inherit}
 .dash-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .dash-section-hdr h3{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
 .pres-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(208px,1fr));gap:18px}
-.pres-card{background:var(--bg);border-radius:var(--r2);border:1.5px solid var(--border);cursor:pointer;transition:box-shadow .15s,border-color .15s,transform .1s;overflow:hidden}
+.pres-card{background:var(--bg);border-radius:var(--r2);border:1.5px solid var(--border);cursor:pointer;transition:box-shadow .15s,border-color .15s,transform .1s;overflow:hidden;user-select:none}
 .pres-card:hover{box-shadow:var(--sh2);border-color:var(--border2);transform:translateY(-2px)}
 .pres-card.new-card{border-style:dashed;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:168px;color:var(--text3)}
 .pres-card.new-card:hover{color:var(--accent);border-color:var(--accent);background:var(--accent-bg)}
@@ -98,8 +98,6 @@ input,select,textarea,button{font-family:inherit}
 .status-pip{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .pip-draft{background:var(--text3)}.pip-published{background:#34a853}.pip-archived{background:var(--border2)}.pip-scheduled{background:var(--warn)}.pip-expired{background:var(--danger)}
 .brand-tag{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;padding:2px 6px;border-radius:3px;background:var(--accent-bg);color:var(--accent)}
-.card-actions{display:none;position:absolute;top:6px;right:6px;gap:4px}
-.card-thumb:hover .card-actions{display:flex}
 
 /* ---- EDITOR SHELL ---- */
 #editor-view{display:flex;flex-direction:column;height:100vh;overflow:hidden}
@@ -109,7 +107,8 @@ input,select,textarea,button{font-family:inherit}
 .ed-logo{font-size:14px;font-weight:600;cursor:pointer;color:var(--text);padding:4px 8px;border-radius:var(--r);white-space:nowrap;flex-shrink:0}
 .ed-logo:hover{background:var(--surface2)}
 .ed-title-wrap{display:flex;align-items:center;gap:4px;flex-shrink:0}
-#ed-title{border:none;outline:none;font-size:14px;font-weight:500;font-family:var(--font);color:var(--text);background:transparent;padding:4px 6px;border-radius:var(--r);min-width:80px;max-width:240px}
+#ed-title{border:none;outline:none;font-size:14px;font-weight:500;font-family:var(--font);color:var(--text);background:transparent;padding:4px 6px;border-radius:var(--r);min-width:80px;max-width:240px;transition:max-width .2s}
+#ed-title:focus{max-width:520px}
 #ed-title:hover{background:var(--surface2)}
 #ed-title:focus{background:var(--surface2);outline:1.5px solid var(--accent)}
 .ed-save-badge{font-size:11px;color:var(--text3);flex-shrink:0;padding:2px 6px}
@@ -277,6 +276,11 @@ const S={
   aesKey:null,       // CryptoKey derived from PAT
 };
 
+// ===================== MODULE-LEVEL VARS =====================
+let _suppressHistory=false;
+const _toHexCtx=(()=>{try{return document.createElement('canvas').getContext('2d');}catch{return null;}})();
+function _editorMenuCloseHandler(e){if(!e.target.closest('.mb-item'))closeMenus();}
+
 // ===================== UTILS =====================
 function uuid(){return crypto.randomUUID?crypto.randomUUID():'id_'+Math.random().toString(36).slice(2)}
 function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}}
@@ -319,12 +323,18 @@ async function deriveKey(pat){
   );
 }
 
+function _u8ToBase64(buf){
+  let s='';
+  for(let i=0;i<buf.length;i+=4096)s+=String.fromCharCode(...buf.subarray(i,i+4096));
+  return btoa(s);
+}
+
 async function aesEncrypt(plaintext){
   const iv=crypto.getRandomValues(new Uint8Array(12));
   const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},S.aesKey,new TextEncoder().encode(plaintext));
   const buf=new Uint8Array(12+ct.byteLength);
   buf.set(iv,0);buf.set(new Uint8Array(ct),12);
-  return btoa(String.fromCharCode(...buf));
+  return _u8ToBase64(buf);
 }
 
 async function aesDecrypt(b64){
@@ -395,11 +405,15 @@ async function saveCatalogue(){
   await updatePublicCatalogue();
 }
 async function updatePublicCatalogue(){
+  const userSlugs=new Set(S.presentations.map(p=>p.slug));
   const pub=S.presentations
     .filter(p=>p.status==='published')
-    .map(({slug,title,brand,status,visible_from,expires,created,updated})=>({slug,title,brand,status,visible_from,expires,created,updated}));
+    .map(({slug,title,brand,status,visible_from,expires,created,updated,slides_count})=>({slug,title,brand,status,visible_from,expires,created,updated,slides_count}));
   const existing=await ghTryGet('data/catalogue.json');
-  await ghPut('data/catalogue.json',JSON.stringify({presentations:pub},null,2),'Update public catalogue',existing?.sha);
+  // Preserve sample entries not managed by the user's encrypted catalogue
+  const existingData=existing?JSON.parse(atob(existing.content.replace(/\n/g,''))):null;
+  const samples=(existingData?.presentations||[]).filter(p=>!userSlugs.has(p.slug));
+  await ghPut('data/catalogue.json',JSON.stringify({presentations:[...pub,...samples]},null,2),'Update public catalogue',existing?.sha);
 }
 
 // ---- Presentation (.enc) ----
@@ -423,7 +437,7 @@ async function loadPresJSON(slug){
     slides:[{id:uuid(),fabricJson:blankSlideJson(),bg:'#ffffff',thumbnail:null,notes:''}],_sha:null};
 }
 async function savePresJSON(pres){
-  const{_sha,_legacySha,_legacyPath,...data}=pres;
+  const{_sha,_legacySha,_legacyPath,_isLegacyV1,...data}=pres;
   const res=await ghPutEnc(`data/presentations/${pres.slug}.enc`,data,`Save: ${pres.title}`,_sha||undefined);
   pres._sha=res.content.sha;
   // If this was a legacy .json file, delete it now that we've migrated to .enc
@@ -495,10 +509,10 @@ async function mountDashboard(){
         <button class="brand-tab${S.brand==='carnivorousplants'?' active':''}" data-brand="carnivorousplants">Carnivorous Plants</button>
       </div>
       <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
-        <div class="dash-search"><span class="dash-search-icon"></span><input id="dash-q" type="text" placeholder="Search…" oninput="filterDash(this.value)"></div>
+        <div class="dash-search"><span class="dash-search-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span><input id="dash-q" type="text" placeholder="Search…" oninput="filterDash(this.value)"></div>
         <button class="btn btn-ghost btn-sm" onclick="openDashSettings()" title="Settings">⚙</button>
         <button class="btn btn-ghost btn-sm" onclick="cycleTheme()">◑</button>
-        <button class="btn btn-ghost btn-sm" onclick="mountAuth()">Sign out</button>
+        <button class="btn btn-ghost btn-sm" onclick="signOut()">Sign out</button>
       </div>
     </div>
     <div class="dash-body">
@@ -512,27 +526,32 @@ async function mountDashboard(){
     if(!t)return;
     S.brand=t.dataset.brand;
     document.querySelectorAll('.brand-tab').forEach(b=>b.classList.toggle('active',b.dataset.brand===S.brand));
-    renderDashGrid(S.presentations);
+    const q=document.getElementById('dash-q')?.value||'';
+    filterDash(q);
   });
   try{
     await loadCatalogue();
+    renderBrandTabs();
     renderDashGrid(S.presentations);
   }catch(e){toast('Failed to load: '+e.message,'err');}
 }
 
 function renderDashGrid(list){
-  const filtered=S.brand==='all'?list:list.filter(p=>p.brand===S.brand);
+  const filtered=(S.brand==='all'?list:list.filter(p=>p.brand===S.brand)).slice().reverse();
   const grid=document.getElementById('pres-grid');
   if(!grid)return;
-  let html=`<div class="pres-card new-card" data-action="new">
+  let html=`<div class="pres-card new-card">
     <div class="new-card-plus">+</div><div class="new-card-lbl">New Presentation</div></div>`;
-  filtered.slice().reverse().forEach(p=>{
+  filtered.forEach(p=>{
     const meta=statusMeta(p);
     const hasShare=p.status==='published'&&p.viewKey;
+    const thumb=p.thumbnail
+      ?`<img src="${p.thumbnail}" alt="" style="width:100%;height:100%;object-fit:cover;display:block">`
+      :`<div class="card-thumb-empty"></div>`;
     html+=`<div class="pres-card" data-slug="${escHtml(p.slug)}" data-viewkey="${hasShare?escHtml(p.viewKey):''}">
-      <div class="card-thumb" data-action="edit"><div class="card-thumb-empty"></div></div>
+      <div class="card-thumb">${thumb}</div>
       <div class="card-info">
-        <div class="card-title" data-action="edit" style="cursor:pointer">${escHtml(p.title)}</div>
+        <div class="card-title">${escHtml(p.title)}</div>
         <div class="card-meta">
           <span class="status-pip ${meta.cls}"></span>
           <span>${meta.label}</span>
@@ -540,24 +559,31 @@ function renderDashGrid(list){
         </div>
         <div style="display:flex;gap:6px;margin-top:10px">
           <button class="btn btn-secondary btn-sm" style="flex:1" data-action="edit">Edit</button>
-          <button class="btn ${hasShare?'btn-primary':'btn-ghost'} btn-sm" style="flex:1${hasShare?'':';opacity:.5'}" data-action="share" ${hasShare?'':'disabled'}>Share link</button>
+          <button class="btn ${hasShare?'btn-primary':'btn-ghost'} btn-sm" style="flex:1${hasShare?'':';opacity:.5'}" data-action="share" ${hasShare?'':'disabled'}>Share</button>
         </div>
       </div>
     </div>`;
   });
   grid.innerHTML=html;
 
-  // Direct per-element listeners — no delegation, no data-action traversal
   grid.querySelector('.new-card')?.addEventListener('click',openNewPresModal);
   grid.querySelectorAll('.pres-card[data-slug]').forEach(card=>{
     const slug=card.dataset.slug;
     const viewKey=card.dataset.viewkey;
+    let _clickTimer=null;
     card.addEventListener('click',e=>{
       if(e.target.closest('[data-action="share"]')){
         if(viewKey)copyShareLink(slug,viewKey);
-      }else{
-        openEditor(slug);
+        return;
       }
+      if(e.target.closest('[data-action="edit"]')){
+        clearTimeout(_clickTimer);_clickTimer=null;
+        openEditor(slug);
+        return;
+      }
+      // Single-click → info panel; rapid double-click → editor
+      if(_clickTimer){clearTimeout(_clickTimer);_clickTimer=null;openEditor(slug);}
+      else{_clickTimer=setTimeout(()=>{_clickTimer=null;openCardInfo(slug);},260);}
     });
   });
 }
@@ -579,6 +605,7 @@ function openDashSettings(){
       <button class="btn btn-primary" onclick="saveDashSettings()">Save</button>
     </div>
   </div>`;
+  el.addEventListener('click',e=>{if(e.target===el)el.remove();});
   document.body.appendChild(el);
 }
 
@@ -591,7 +618,8 @@ function saveDashSettings(){
 }
 
 function filterDash(q){
-  const filtered=S.presentations.filter(p=>p.title.toLowerCase().includes(q.toLowerCase()));
+  const lq=q.toLowerCase();
+  const filtered=lq?S.presentations.filter(p=>p.title.toLowerCase().includes(lq)||p.description?.toLowerCase().includes(lq)):S.presentations;
   renderDashGrid(filtered);
 }
 
@@ -645,6 +673,7 @@ function openNewPresModal(){
       <button class="btn btn-primary" onclick="createPresentation(false)">Create →</button>
     </div>
   </div>`;
+  el.addEventListener('click',e=>{if(e.target===el)el.remove();});
   document.body.appendChild(el);
   setTimeout(()=>document.getElementById('np-title')?.focus(),50);
 }
@@ -668,17 +697,19 @@ async function createPresentation(withAI=false){
   const slug=slugify(slugRaw||title);
   if(S.presentations.find(p=>p.slug===slug)){toast('Slug already exists','err');return;}
   const now=new Date().toISOString();
-  const pres={slug,title,brand:brand||'all',status,description:desc,visible_from:vf||null,expires:exp||null,created:now,updated:now,_sha:null};
+  const pres={slug,title,brand:brand||'all',status,description:desc,visible_from:vf||null,expires:exp||null,created:now,updated:now,slides_count:1,_sha:null};
   const presData={...pres,slides:[{id:uuid(),fabricJson:blankSlideJson(),bg:'#ffffff',thumbnail:null,notes:''}]};
+  const btn=document.querySelector('#new-pres-overlay .btn-primary');
+  if(btn){btn.disabled=true;btn.textContent='Creating…';}
   try{
     await savePresJSON(presData);
-    S.presentations.push({slug,title,brand:brand||'all',status,description:desc,visible_from:vf||null,expires:exp||null,created:now,updated:now});
+    S.presentations.push({slug,title,brand:brand||'all',status,description:desc,visible_from:vf||null,expires:exp||null,created:now,updated:now,slides_count:1});
     await saveCatalogue();
     document.getElementById('new-pres-overlay')?.remove();
     toast('Created!','ok');
     if(withAI&&brief){S._pendingAiBrief=brief;}
     openEditor(slug);
-  }catch(e){toast('Error: '+e.message,'err');}
+  }catch(e){toast('Error: '+e.message,'err');if(btn){btn.disabled=false;btn.textContent='Create →';}}
 }
 
 function blankSlideJson(){
@@ -837,7 +868,8 @@ async function openEditor(slug){
     closeMenus();
     if(!wasOpen)item.classList.add('open');
   });
-  document.addEventListener('click',e=>{if(!e.target.closest('.mb-item'))closeMenus()},{once:false,capture:false});
+  document.removeEventListener('click',_editorMenuCloseHandler);
+  document.addEventListener('click',_editorMenuCloseHandler);
 
   // Load data and init canvas
   try{
@@ -867,6 +899,7 @@ function closeMenus(){document.querySelectorAll('.mb-item.open').forEach(el=>el.
 
 function backToDash(){
   if(S.dirty){if(!confirm('Unsaved changes. Leave anyway?'))return;}
+  document.removeEventListener('click',_editorMenuCloseHandler);
   if(S.fc){S.fc.dispose();S.fc=null;}
   mountDashboard();
 }
@@ -1051,23 +1084,26 @@ function pushHistory(){
   if(S.hist.length>50)S.hist.shift();else S.histIdx++;
   setDirty(true);
   updateThumbDebounced();
+  autoSave();
 }
 
 function doUndo(){
   if(!S.fc||S.histIdx<=0)return;
   S.histIdx--;
-  S.fc.loadFromJSON(S.hist[S.histIdx],()=>{S.fc.renderAll();clearPropsPanel();updateThumb();});
+  _suppressHistory=true;
+  S.fc.loadFromJSON(S.hist[S.histIdx],()=>{_suppressHistory=false;S.fc.renderAll();clearPropsPanel();updateThumb();});
   setDirty(true);
 }
 
 function doRedo(){
   if(!S.fc||S.histIdx>=S.hist.length-1)return;
   S.histIdx++;
-  S.fc.loadFromJSON(S.hist[S.histIdx],()=>{S.fc.renderAll();clearPropsPanel();updateThumb();});
+  _suppressHistory=true;
+  S.fc.loadFromJSON(S.hist[S.histIdx],()=>{_suppressHistory=false;S.fc.renderAll();clearPropsPanel();updateThumb();});
   setDirty(true);
 }
 
-const onCanvasChange=debounce(()=>{pushHistory();updatePropsPanel();updateToolbar();},80);
+const onCanvasChange=debounce(()=>{if(!_suppressHistory){pushHistory();updatePropsPanel();updateToolbar();}},80);
 
 // ===================== SLIDE MANAGEMENT =====================
 function renderSlidePanel(){
@@ -1181,6 +1217,7 @@ function updateThumb(){
 }
 
 const updateThumbDebounced=debounce(updateThumb,600);
+const pushHistoryDebounced=debounce(pushHistory,300);
 
 function saveNotes(){S.slides[S.curSlide].notes=document.getElementById('notes-ta')?.value||'';}
 function toggleNotes(){
@@ -1197,7 +1234,7 @@ function slideCtxMenu(e,i){
     {label:'Duplicate Slide',fn:()=>{saveCurSlide();const copy=JSON.parse(JSON.stringify(S.slides[i]));copy.id=uuid();S.slides.splice(i+1,0,copy);S.curSlide=i+1;renderSlidePanel();loadSlide(i+1);setDirty(true);}},
     {label:'Add Slide After',fn:()=>addSlide(i)},
     {sep:true},
-    {label:'Set Background…',fn:()=>pickSlideBg()},
+    {label:'Set Background…',fn:()=>{if(i!==S.curSlide){saveCurSlide();loadSlide(i);}pickSlideBg();}},
     {sep:true},
     {label:'Delete Slide',fn:()=>deleteSlideAt(i),danger:true},
   ]);
@@ -1243,7 +1280,7 @@ function doLayer(dir){
   else if(dir==='forward')obj.bringForward();
   else if(dir==='backward')obj.sendBackwards();
   else if(dir==='back')obj.sendToBack();
-  S.fc.renderAll();
+  S.fc.renderAll();pushHistory();
 }
 
 function alignObj(dir){
@@ -1301,15 +1338,13 @@ function applyFontSize(v){
 }
 
 // ===================== COLOR PICKER =====================
-let _colorTarget=null;
 function pickColor(target){
-  _colorTarget=target;
   const hc=document.getElementById('hidden-color');
   const obj=S.fc?.getActiveObject();
   if(target==='fill')hc.value=toHex(obj?.fill||'#4285f4');
   else if(target==='textFill')hc.value=toHex(obj?.fill||'#000000');
   else if(target==='stroke')hc.value=toHex(obj?.stroke||'#000000');
-  hc.onchange=e=>{applyColor(_colorTarget,e.target.value);};
+  hc.onchange=e=>{applyColor(target,e.target.value);};
   hc.click();
 }
 
@@ -1330,8 +1365,8 @@ function applyColor(target,val){
 function toHex(c){
   if(!c||typeof c!=='string')return'#000000';
   if(c.startsWith('#'))return c;
-  const tmp=document.createElement('canvas').getContext('2d');
-  tmp.fillStyle=c;return tmp.fillStyle;
+  if(_toHexCtx){_toHexCtx.fillStyle=c;return _toHexCtx.fillStyle;}
+  return'#000000';
 }
 
 function updateSwatches(obj){
@@ -1424,8 +1459,7 @@ function updatePropsPanel(){
   html+=`
     <div class="pp-section">
       <div class="pp-section-title">Appearance</div>
-      <div class="pp-row"><div class="pp-label">Opacity</div><input class="pp-input" type="range" data-prop="opacity" value="${Math.round((obj.opacity||1)*100)}" min="0" max="100" style="flex:1;height:auto;border:none;padding:0"></div>
-      <div class="pp-row" style="justify-content:flex-end"><span style="font-size:11px;color:var(--text3)">${Math.round((obj.opacity||1)*100)}%</span></div>
+      <div class="pp-row"><div class="pp-label">Opacity</div><input class="pp-input" type="range" data-prop="opacity" value="${Math.round((obj.opacity||1)*100)}" min="0" max="100" style="flex:1;height:auto;border:none;padding:0"><span id="pp-opacity-lbl" style="font-size:11px;color:var(--text3);width:32px;text-align:right;flex-shrink:0">${Math.round((obj.opacity||1)*100)}%</span></div>
     </div>
     <div class="pp-divider"></div>
     <div class="pp-section">
@@ -1464,7 +1498,7 @@ function handlePropInput(e){
   const obj=S.fc?.getActiveObject();if(!obj)return;
   if(prop==='opacity'){
     obj.set('opacity',parseInt(val)/100);
-    const lbl=e.target.closest('.pp-section')?.querySelector('span');
+    const lbl=document.getElementById('pp-opacity-lbl');
     if(lbl)lbl.textContent=val+'%';
   }else if(prop==='fill'||prop==='stroke'){
     obj.set(prop,val);
@@ -1577,9 +1611,14 @@ async function saveAll(){
     const title=document.getElementById('ed-title')?.value.trim()||S.current.title;
     S.current.title=title;
     await savePresJSON(S.current);
-    // Update catalogue
+    // Update catalogue entry
     const idx=S.presentations.findIndex(p=>p.slug===S.current.slug);
-    if(idx>=0){S.presentations[idx].title=title;S.presentations[idx].updated=S.current.updated;}
+    if(idx>=0){
+      S.presentations[idx].title=title;
+      S.presentations[idx].updated=S.current.updated;
+      S.presentations[idx].slides_count=S.slides.length;
+      if(S.slides[0]?.thumbnail)S.presentations[idx].thumbnail=S.slides[0].thumbnail;
+    }
     await saveCatalogue();
     setDirty(false);
     toast('Saved','ok');
@@ -1604,6 +1643,7 @@ async function exportPPTX(){
     prs.defineLayout({name:'WIDE',width:13.33,height:7.5});
     prs.layout='WIDE';
     for(let i=0;i<S.slides.length;i++){
+      toast(`Rendering slide ${i+1}/${S.slides.length}…`,'info',3000);
       const imgData=await renderSlideImg(S.slides[i],1);
       const slide=prs.addSlide();
       slide.addImage({data:imgData,x:0,y:0,w:'100%',h:'100%'});
@@ -1630,7 +1670,7 @@ async function encryptForView(plaintext,hexKey){
   const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},ck,new TextEncoder().encode(plaintext));
   const buf=new Uint8Array(12+ct.byteLength);
   buf.set(iv,0);buf.set(new Uint8Array(ct),12);
-  return btoa(String.fromCharCode(...buf));
+  return _u8ToBase64(buf);
 }
 
 async function publishReveal(){
@@ -1784,14 +1824,14 @@ async function renderSlideImg(slide,scale=1){
 
 // ===================== AI GENERATION =====================
 async function callWorker(messages,model='fast'){
-  if(!S.workerUrl){toast('No AI Worker URL set — configure it at Sign in','err');return null;}
+  if(!S.workerUrl){toast('No AI Worker URL — set it in Dashboard Settings','err');return null;}
   const r=await fetch(S.workerUrl+'/generate',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({messages,model})
   });
+  if(!r.ok){let e={};try{e=await r.json();}catch{}throw new Error(e.error||'Worker error '+r.status);}
   const data=await r.json();
-  if(!r.ok)throw new Error(data.error||'Worker error '+r.status);
   return data.choices?.[0]?.message?.content||null;
 }
 
@@ -1826,6 +1866,7 @@ function openAiPanel(){
     </div>
     <div class="modal-foot"><button class="btn btn-secondary" onclick="document.getElementById('ai-panel-overlay').remove()">Close</button></div>
   </div>`;
+  el.addEventListener('click',e=>{if(e.target===el)el.remove();});
   document.body.appendChild(el);
   setTimeout(()=>document.getElementById('ai-prompt')?.focus(),50);
 }
@@ -1927,6 +1968,7 @@ function openPresSettings(){
       </div>
     </div>
   </div>`;
+  el.addEventListener('click',e=>{if(e.target===el)el.remove();});
   document.body.appendChild(el);
 }
 
@@ -1990,6 +2032,8 @@ document.addEventListener('keydown',e=>{
     if(e.key==='g'){e.preventDefault();e.shiftKey?doUngroup():doGroup();return;}
     if(e.key==='m'){e.preventDefault();addSlide();return;}
   }
+  if(e.key==='PageUp'){e.preventDefault();if(S.curSlide>0)switchSlide(S.curSlide-1);return;}
+  if(e.key==='PageDown'){e.preventDefault();if(S.curSlide<S.slides.length-1)switchSlide(S.curSlide+1);return;}
   if(isTyping())return;
   if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();doDelete();return;}
   if(e.key==='Escape'){S.fc?.discardActiveObject();S.fc?.renderAll();setTool('select');return;}
@@ -2005,8 +2049,129 @@ document.addEventListener('keydown',e=>{
     if(e.key==='ArrowUp')obj.set('top',(obj.top||0)-d);
     if(e.key==='ArrowDown')obj.set('top',(obj.top||0)+d);
     obj.setCoords();S.fc.renderAll();
+    pushHistoryDebounced();
   }
 });
+
+// ===================== SIGN OUT =====================
+function signOut(){
+  S.pat='';S.aesKey=null;S.presentations=[];S.catSha=null;S.current=null;S.slides=[];S.dirty=false;
+  sessionStorage.removeItem('ps_pat');
+  if(S.fc){S.fc.dispose();S.fc=null;}
+  document.removeEventListener('click',_editorMenuCloseHandler);
+  mountAuth();
+}
+
+// ===================== BRAND TABS WITH COUNT =====================
+function renderBrandTabs(){
+  const counts={all:S.presentations.length,phytolabs:0,tcplants:0,carnivorousplants:0};
+  S.presentations.forEach(p=>{if(counts[p.brand]!==undefined)counts[p.brand]++;});
+  const brands=[{v:'all',l:'All'},{v:'phytolabs',l:'Phyto Labs'},{v:'tcplants',l:'TC Plants'},{v:'carnivorousplants',l:'Carnivorous Plants'}];
+  const container=document.getElementById('brand-tabs');
+  if(!container)return;
+  container.innerHTML=brands.map(b=>`<button class="brand-tab${S.brand===b.v?' active':''}" data-brand="${b.v}">${b.l}<span style="font-size:10px;opacity:.55;margin-left:4px">(${counts[b.v]||0})</span></button>`).join('');
+}
+
+// ===================== BRAND LABEL HELPER =====================
+function brandLabel(b){
+  const m={phytolabs:'Phyto Labs',tcplants:'TC Plants',carnivorousplants:'Carnivorous Plants'};
+  return m[b]||'All Brands';
+}
+
+// ===================== CARD INFO PANEL =====================
+function openCardInfo(slug){
+  const p=S.presentations.find(pr=>pr.slug===slug);
+  if(!p){toast('Presentation not found','err');return;}
+  document.getElementById('card-info-overlay')?.remove();
+  const brands=[{v:'phytolabs',l:'Phyto Labs'},{v:'tcplants',l:'TC Plants'},{v:'carnivorousplants',l:'Carnivorous Plants'}];
+  const brandOpts=brands.map(b=>`<option value="${b.v}"${p.brand===b.v?' selected':''}>${b.l}</option>`).join('');
+  const fmtDt=s=>s?s.slice(0,16):'';
+  const el=document.createElement('div');
+  el.className='modal-overlay';
+  el.id='card-info-overlay';
+  const thumbHtml=p.thumbnail
+    ?`<div style="width:100%;height:150px;border-radius:6px;overflow:hidden;margin-bottom:16px;border:1px solid var(--border)"><img src="${p.thumbnail}" style="width:100%;height:100%;object-fit:cover;display:block"></div>`
+    :`<div style="width:100%;height:68px;background:var(--surface2);border-radius:6px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;border:1px solid var(--border);font-size:12px;color:var(--text3)">${brandLabel(p.brand)} · ${p.slides_count||'?'} slides</div>`;
+  el.innerHTML=`
+  <div class="modal" style="width:500px">
+    <div class="modal-hdr">
+      <div class="modal-title">${escHtml(p.title||'Presentation')}</div>
+      <button class="btn-icon" onclick="document.getElementById('card-info-overlay').remove()">✕</button>
+    </div>
+    <div class="modal-body">
+      ${thumbHtml}
+      <div class="form-group"><label>Title</label><input id="ci-title" type="text" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r);padding:9px 12px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);outline:none" value="${escHtml(p.title||'')}"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group"><label>Brand</label><select id="ci-brand" style="width:100%;height:36px;border:1.5px solid var(--border);border-radius:var(--r);padding:0 10px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text)">${brandOpts}</select></div>
+        <div class="form-group"><label>Status</label><select id="ci-status" style="width:100%;height:36px;border:1.5px solid var(--border);border-radius:var(--r);padding:0 10px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text)">
+          <option value="draft"${p.status==='draft'?' selected':''}>Draft</option>
+          <option value="published"${p.status==='published'?' selected':''}>Published</option>
+          <option value="archived"${p.status==='archived'?' selected':''}>Archived</option>
+        </select></div>
+      </div>
+      <div class="form-group"><label>Description</label><textarea id="ci-desc" style="width:100%;height:54px;border:1.5px solid var(--border);border-radius:var(--r);padding:8px 10px;font-size:13px;font-family:var(--font);resize:none;background:var(--bg);color:var(--text);outline:none">${escHtml(p.description||'')}</textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group"><label>Visible from</label><input id="ci-from" type="datetime-local" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r);padding:8px 10px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);outline:none" value="${fmtDt(p.visible_from)}"></div>
+        <div class="form-group"><label>Expires</label><input id="ci-exp" type="datetime-local" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r);padding:8px 10px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);outline:none" value="${fmtDt(p.expires)}"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);line-height:2;border-top:1px solid var(--border);margin-top:4px;padding-top:10px">
+        <span>Slug: <code style="font-size:11px">${escHtml(p.slug)}</code></span>&ensp;·&ensp;
+        <span>Created: ${p.created?new Date(p.created).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'-'}</span>&ensp;·&ensp;
+        <span>Updated: ${p.updated?new Date(p.updated).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'-'}</span>&ensp;·&ensp;
+        <span>${p.slides_count||'?'} slides</span>
+      </div>
+    </div>
+    <div class="modal-foot" style="justify-content:space-between">
+      <button class="btn btn-danger btn-sm" onclick="deleteFromDash('${escHtml(p.slug)}')">Delete</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" onclick="saveCardMeta('${escHtml(p.slug)}')">Save Metadata</button>
+        <button class="btn btn-primary" onclick="document.getElementById('card-info-overlay').remove();openEditor('${escHtml(p.slug)}')">Open in Editor →</button>
+      </div>
+    </div>
+  </div>`;
+  el.addEventListener('click',e=>{if(e.target===el)el.remove();});
+  document.body.appendChild(el);
+  setTimeout(()=>document.getElementById('ci-title')?.focus(),50);
+}
+
+async function saveCardMeta(slug){
+  const p=S.presentations.find(pr=>pr.slug===slug);
+  if(!p){toast('Not found','err');return;}
+  const title=document.getElementById('ci-title')?.value.trim();
+  const brand=document.getElementById('ci-brand')?.value;
+  const status=document.getElementById('ci-status')?.value;
+  const desc=document.getElementById('ci-desc')?.value.trim()||'';
+  const vf=document.getElementById('ci-from')?.value||null;
+  const exp=document.getElementById('ci-exp')?.value||null;
+  if(!title){toast('Title is required','err');return;}
+  const btn=document.querySelector('#card-info-overlay .btn-secondary');
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  Object.assign(p,{title,brand,status,description:desc,visible_from:vf||null,expires:exp||null,updated:new Date().toISOString()});
+  try{
+    await saveCatalogue();
+    toast('Metadata saved','ok');
+    document.getElementById('card-info-overlay')?.remove();
+    renderBrandTabs();
+    renderDashGrid(S.presentations);
+  }catch(e){
+    toast('Save failed: '+e.message,'err');
+    if(btn){btn.disabled=false;btn.textContent='Save Metadata';}
+  }
+}
+
+async function deleteFromDash(slug){
+  const p=S.presentations.find(pr=>pr.slug===slug);
+  if(!p)return;
+  if(!confirm(`Delete "${p.title}"?\n\nThis removes it from the catalogue. The encrypted data file remains in the repo.`))return;
+  document.getElementById('card-info-overlay')?.remove();
+  S.presentations=S.presentations.filter(pr=>pr.slug!==slug);
+  try{
+    await saveCatalogue();
+    toast('Deleted from catalogue','ok');
+    renderBrandTabs();
+    renderDashGrid(S.presentations);
+  }catch(e){toast('Delete failed: '+e.message,'err');}
+}
 
 // ===================== INIT =====================
 function init(){
