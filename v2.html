@@ -495,31 +495,40 @@ function renderDashGrid(list){
   const filtered=brand?list.filter(p=>p.brand===brand):list;
   const grid=document.getElementById('pres-grid');
   if(!grid)return;
-  let html=`<div class="pres-card new-card" onclick="openNewPresModal()">
+  let html=`<div class="pres-card new-card" data-action="new">
     <div class="new-card-plus">＋</div><div class="new-card-lbl">New Presentation</div></div>`;
   filtered.slice().reverse().forEach(p=>{
     const meta=statusMeta(p);
     const hasShare=p.status==='published'&&p.viewKey;
-    html+=`<div class="pres-card">
-      <div class="card-thumb" onclick="openEditor('${p.slug}')"><div class="card-thumb-empty">🗂</div></div>
+    html+=`<div class="pres-card" data-slug="${escHtml(p.slug)}" data-viewkey="${hasShare?escHtml(p.viewKey):''}">
+      <div class="card-thumb" data-action="edit"><div class="card-thumb-empty">🗂</div></div>
       <div class="card-info">
-        <div class="card-title" onclick="openEditor('${p.slug}')" style="cursor:pointer">${escHtml(p.title)}</div>
+        <div class="card-title" data-action="edit" style="cursor:pointer">${escHtml(p.title)}</div>
         <div class="card-meta">
           <span class="status-pip ${meta.cls}"></span>
           <span>${meta.label}</span>
           <span class="brand-tag">${p.brand||'all'}</span>
         </div>
         <div style="display:flex;gap:6px;margin-top:10px">
-          <button class="btn btn-secondary btn-sm" style="flex:1" onclick="openEditor('${p.slug}')">Edit</button>
-          ${hasShare
-            ? `<button class="btn btn-primary btn-sm" style="flex:1" onclick="copyShareLink('${p.slug}','${p.viewKey}')">Share link</button>`
-            : `<button class="btn btn-ghost btn-sm" style="flex:1;opacity:.5" disabled title="Publish first to get a share link">Share link</button>`
-          }
+          <button class="btn btn-secondary btn-sm" style="flex:1" data-action="edit">Edit</button>
+          <button class="btn ${hasShare?'btn-primary':'btn-ghost'} btn-sm" style="flex:1${hasShare?'':';opacity:.5'}" data-action="share" ${hasShare?'':'disabled'}>Share link</button>
         </div>
       </div>
     </div>`;
   });
   grid.innerHTML=html;
+
+  // Event delegation — one listener on the grid, no inline onclick
+  grid.addEventListener('click',e=>{
+    const action=e.target.closest('[data-action]')?.dataset.action;
+    const card=e.target.closest('[data-slug]');
+    if(action==='new'){openNewPresModal();return;}
+    if(!card)return;
+    const slug=card.dataset.slug;
+    const viewKey=card.dataset.viewkey;
+    if(action==='edit')openEditor(slug);
+    else if(action==='share'&&viewKey)copyShareLink(slug,viewKey);
+  });
 }
 
 function filterDash(q){
@@ -772,6 +781,7 @@ async function openEditor(slug){
     renderSlidePanel();
     initFabric();
     loadSlide(0);
+    setupCanvasContextMenu();
   }catch(e){toast('Failed to load: '+e.message,'err');}
 }
 

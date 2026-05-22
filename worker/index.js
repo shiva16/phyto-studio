@@ -1,6 +1,9 @@
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const ALLOWED_ORIGINS = [
-  'https://studio.phytolabs.in',
+  'https://shiva16.github.io',
+  'https://phytolabs.in',
+  'https://tcplants.in',
+  'https://carnivorousplants.in',
   'http://localhost:5500',
   'http://127.0.0.1:5500',
   'http://localhost:3000',
