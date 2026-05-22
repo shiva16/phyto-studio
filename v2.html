@@ -372,13 +372,19 @@ async function ghTryGetEnc(path){try{return await ghGetEnc(path)}catch{return nu
 // data/catalogue.enc  — encrypted, all presentations (studio only)
 // data/catalogue.json — plain, published-only summary (public viewer)
 async function loadCatalogue(){
+  // Load sample/template entries from the public catalogue (always available)
+  const sf=await ghTryGet('data/catalogue.json');
+  const samples=sf?JSON.parse(atob(sf.content.replace(/\n/g,''))).presentations||[]:[];
+
   const r=await ghTryGetEnc('data/catalogue.enc');
-  if(r){S.presentations=r.data.presentations||[];S.catSha=r.sha;}
-  else{
-    // First run or legacy: try plain catalogue.json and migrate
-    const f=await ghTryGet('data/catalogue.json');
-    if(f){const d=JSON.parse(atob(f.content.replace(/\n/g,'')));S.presentations=d.presentations||[];}
-    else S.presentations=[];
+  if(r){
+    S.catSha=r.sha;
+    const enc=r.data.presentations||[];
+    const encSlugs=new Set(enc.map(p=>p.slug));
+    // Merge: user's encrypted presentations first, then any samples not yet added
+    S.presentations=[...enc,...samples.filter(s=>!encSlugs.has(s.slug))];
+  }else{
+    S.presentations=samples;
     S.catSha=null;
   }
 }
