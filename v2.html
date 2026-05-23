@@ -75,6 +75,9 @@ input,select,textarea,button{font-family:inherit}
 .brand-tab{padding:5px 13px;border-radius:20px;border:1.5px solid transparent;background:transparent;font-size:12px;font-weight:600;font-family:var(--font);color:var(--text2);cursor:pointer;transition:all .15s}
 .brand-tab:hover{color:var(--text);background:var(--surface2)}
 .brand-tab.active{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.brand-tab.active[data-brand="phytolabs"]{background:rgba(8,145,178,.12);border-color:#0891b2;color:#0891b2}
+.brand-tab.active[data-brand="tcplants"]{background:rgba(22,163,74,.12);border-color:#16a34a;color:#16a34a}
+.brand-tab.active[data-brand="carnivorousplants"]{background:rgba(234,88,12,.12);border-color:#ea580c;color:#ea580c}
 .dash-logo{font-size:15px;font-weight:600;cursor:pointer;color:var(--text)}
 .dash-logo em{color:var(--accent);font-style:normal}
 .dash-search{flex:1;max-width:360px;position:relative}
@@ -449,7 +452,7 @@ const GH_OWNER='shiva16', GH_REPO='phyto-studio', GH_BRANCH='main';
 const SLIDE_W=1280, SLIDE_H=720;
 const FONTS=['Plus Jakarta Sans','Poppins','DM Sans','Nunito','Open Sans','Lato','Raleway','Montserrat','Roboto','Oswald','Inter','Playfair Display','Merriweather','Libre Baskerville','Georgia','Garamond','Palatino','Times New Roman','Arial','Verdana','Trebuchet MS','Impact','Courier New','Source Code Pro'];
 const FONT_SIZES=[8,9,10,11,12,14,16,18,20,24,28,32,36,40,48,56,64,72,96];
-const BRAND_COLORS={phytolabs:'#1a535c',tcplants:'#52796f',carnivorousplants:'#2d6a4f',all:'#1a6b55'};
+const BRAND_COLORS={phytolabs:'#0891b2',tcplants:'#16a34a',carnivorousplants:'#ea580c',all:'#1a6b55'};
 const SHAPE_FILL_DEFAULTS=['#4285f4','#34a853','#fbbc04','#ea4335','#9c27b0','#00bcd4','#ff5722','#607d8b'];
 
 // ===================== STATE =====================
@@ -788,9 +791,9 @@ function timeAgo(iso){
 }
 
 const BRAND_GRAD={
-  phytolabs:'linear-gradient(135deg,#1a535c,#0d7377)',
-  tcplants:'linear-gradient(135deg,#52796f,#2d6a4f)',
-  carnivorousplants:'linear-gradient(135deg,#2d6a4f,#1b4332)',
+  phytolabs:'linear-gradient(135deg,#0891b2,#0369a1)',
+  tcplants:'linear-gradient(135deg,#16a34a,#15803d)',
+  carnivorousplants:'linear-gradient(135deg,#ea580c,#c2410c)',
   all:'linear-gradient(135deg,#1a6b55,#145a46)',
 };
 
@@ -886,7 +889,7 @@ function renderDashGrid(list){
         <div class="card-meta">
           <span class="status-pip ${meta.cls}"></span>
           <span>${meta.label}</span>
-          <span class="brand-tag">${p.brand||'all'}</span>
+          <span class="brand-tag" style="background:${BRAND_COLORS[p.brand]||'var(--accent)'}22;color:${BRAND_COLORS[p.brand]||'var(--accent)'}">${p.brand||'all'}</span>
         </div>
         <div class="card-bottom">
           <span class="card-slides">${slides}</span>
@@ -2563,7 +2566,7 @@ function openCardInfo(slug){
   el.id='card-info-overlay';
   const thumbHtml=p.thumbnail
     ?`<div style="width:100%;height:150px;border-radius:6px;overflow:hidden;margin-bottom:16px;border:1px solid var(--border)"><img src="${p.thumbnail}" style="width:100%;height:100%;object-fit:cover;display:block"></div>`
-    :`<div style="width:100%;height:68px;background:var(--surface2);border-radius:6px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;border:1px solid var(--border);font-size:12px;color:var(--text3)">${brandLabel(p.brand)} · ${p.slides_count||'?'} slides</div>`;
+    :`<div style="width:100%;height:68px;background:${BRAND_GRAD[p.brand]||BRAND_GRAD.all};border-radius:6px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:12px;color:#fff;font-weight:600">${brandLabel(p.brand)} · ${p.slides_count||'?'} slides</div>`;
   el.innerHTML=`
   <div class="modal" style="width:500px">
     <div class="modal-hdr">
