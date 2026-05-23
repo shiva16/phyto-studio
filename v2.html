@@ -397,9 +397,15 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-bottom:2px 
 .pt-user-lbl{font-size:11px;color:#6e7681;font-family:system-ui,sans-serif}
 .pt-close-btn{padding:4px 10px;border-radius:6px;border:1px solid #30363d;background:transparent;color:#8b949e;font-size:11px;cursor:pointer;font-family:system-ui,sans-serif;transition:all .1s;white-space:nowrap}
 .pt-close-btn:hover{background:#21262d;color:#c9d1d9}
-#pt-xterm{flex:1;overflow:hidden;padding:6px 4px;min-height:0}
+#pt-xterm{flex:1;overflow:hidden;padding:6px 4px;min-height:0;position:relative}
 #pt-xterm .xterm{height:100%}
 #pt-xterm .xterm-viewport{scrollbar-width:thin;scrollbar-color:#30363d transparent}
+#pt-drop-overlay{position:absolute;inset:0;z-index:50;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:rgba(13,17,23,.85);backdrop-filter:blur(4px);border:2px dashed #58a6ff;border-radius:6px;pointer-events:none}
+#pt-drop-overlay.active{display:flex}
+.pt-drop-icon{font-size:36px;animation:pt-bob .8s ease-in-out infinite alternate}
+.pt-drop-lbl{font-size:15px;font-weight:600;color:#e6edf3;font-family:system-ui,sans-serif}
+.pt-drop-sub{font-size:11px;color:#8b949e;font-family:system-ui,sans-serif}
+@keyframes pt-bob{from{transform:translateY(-4px)}to{transform:translateY(4px)}}
 #pt-statusbar{height:22px;background:#1c2128;border-top:1px solid #30363d;display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:11px;color:#6e7681;flex-shrink:0;font-family:system-ui,sans-serif}
 .pt-status-right{display:flex;gap:12px;align-items:center}
 </style>
@@ -435,7 +441,13 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-bottom:2px 
       <button class="pt-close-btn" onclick="closePhytoTerm()">✕ Close</button>
     </div>
   </div>
-  <div id="pt-xterm"></div>
+  <div id="pt-xterm">
+    <div id="pt-drop-overlay">
+      <div class="pt-drop-icon">⬇</div>
+      <div class="pt-drop-lbl">Drop file to read &amp; attach</div>
+      <div class="pt-drop-sub">text · code · images → auto-uploaded to repo</div>
+    </div>
+  </div>
   <div id="pt-statusbar">
     <span id="pt-status">ready</span>
     <div class="pt-status-right"><span style="color:#3fb950">🔒 phyto-term · all-encrypted</span></div>
@@ -3266,8 +3278,8 @@ function pvGoto(i){_pvIdx=i;pvRender();}
 const PT_REPO = 'phyto-term';
 const NIM_BASE = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const NIM_MODEL_IDS = {
-  deepseek: 'deepseek-ai/deepseek-v4-flash',
-  qwen:     'qwen/qwen3.5-122b-a10b',
+  deepseek: 'deepseek-ai/deepseek-v4-pro',
+  qwen:     'qwen/qwen3.5-397b-a17b',
   coder:    'qwen/qwen3-coder-480b-a35b-instruct',
 };
 
@@ -3386,8 +3398,9 @@ async function ptInit(){
   PT.inited=true;
   PT.sessionStart=new Date().toISOString();
 
-  ptL(C.bgreen+C.b+'  PhytoTerm'+C.r+C.gray+'  Groq + NIM · all-encrypted'+C.r);
-  ptL(C.gray+'  Booting…'+C.r);
+  ptL('');
+  ptL(C.bgreen+C.b+'  ⬡ PhytoTerm'+C.r+'  '+C.gray+'Groq · NVIDIA NIM · 🔒 encrypted'+C.r);
+  ptL(C.gray+'  ─────────────────────────────────────'+C.r);
 
   const hadState=ptRestoreSessionState();
   ptUpdateTokenBar();
@@ -3395,36 +3408,39 @@ async function ptInit(){
 
   ptL('');
   ptL(C.gray+'  '+C.white+'help'+C.gray+' — list commands   '+C.white+'exit'+C.gray+' — save & close'+C.r);
+  ptL(C.gray+'  drag files or paste images to attach to AI context'+C.r);
   if(hadState&&PT.messages.length){
     ptL(C.gray+'  AI context: '+Math.floor(PT.messages.length/2)+' exchanges restored'+C.r);
   }
+  ptInitDragDrop();
   ptPrompt();
   PT.term.focus();
 }
 
 async function ptGhBoot(hadSessionState){
   try{
-    const user=await ptApiGet('https://api.github.com/user');
+    const user=await ptSpinStep('github.com',()=>ptApiGet('https://api.github.com/user'));
     PT.ghUser=user.login;
     PT.ptOwner=user.login+'/'+PT_REPO;
     const lbl=document.getElementById('pt-user-lbl');
     if(lbl) lbl.textContent=user.login;
+    ptClear(); ptL(C.green+'  ✓ @'+user.login+C.r);
 
-    // Populate repo selector
-    const repos=await ptApiGet('https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator');
+    const repos=await ptSpinStep('repos',()=>ptApiGet('https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator'));
     const sel=document.getElementById('pt-repo-sel');
-    if(sel){
-      sel.innerHTML=repos.map(r=>'<option value="'+r.full_name+'"'+(r.full_name===PT.repo?' selected':'')+'>'+r.full_name+'</option>').join('');
+    if(sel) sel.innerHTML=repos.map(r=>'<option value="'+r.full_name+'"'+(r.full_name===PT.repo?' selected':'')+'>'+r.full_name+'</option>').join('');
+    ptClear();
+
+    await ptSpinStep('phyto-term',()=>ptEnsurePrivateRepo());
+    ptClear(); ptL(C.green+'  ✓ phyto-term'+C.gray+' (encrypted store)'+C.r);
+
+    if(!hadSessionState){
+      await ptSpinStep('context',()=>ptLoadContext());
+      ptClear(); ptL(C.green+'  ✓ '+(PT.messages.length?Math.floor(PT.messages.length/2)+' exchanges restored':'fresh session')+C.r);
     }
 
-    // Ensure private phyto-term repo exists
-    await ptEnsurePrivateRepo();
-
-    // Load cross-session context from phyto-term if no sessionStorage
-    if(!hadSessionState) await ptLoadContext();
-
-    // Load branches for current repo
-    await ptLoadBranches(PT.repo);
+    await ptSpinStep(PT.repo.split('/')[1]||PT.repo,()=>ptLoadBranches(PT.repo));
+    ptClear(); ptL(C.green+'  ✓ '+PT.branch+C.r);
     ptUpdateStatus('ready');
   }catch(e){
     ptL(C.yellow+'  Warning: '+e.message+C.r);
@@ -4083,7 +4099,7 @@ function ptCmdTokens(){
   ptL('');ptL(C.b+C.white+'Token usage — this session'+C.r);ptL(C.gray+'─'.repeat(40)+C.r);
   ptL('  Calls: '+C.cyan+calls+C.r+'   Input: '+C.green+input.toLocaleString()+C.r+'   Output: '+C.blue+output.toLocaleString()+C.r);
   ptL('');ptL(C.b+'Cost estimates (NIM free = $0):'+C.r);
-  const models={fast:{n:'Groq 8b',in:0.05,out:0.08,l:'~unlimited'},quality:{n:'Groq 70b',in:0.59,out:0.79,l:'1k/day'},deepseek:{n:'NIM deepseek-v4-flash',in:0.14,out:0.28,l:'40 RPM'},qwen:{n:'NIM qwen3.5-122b',in:0.20,out:0.60,l:'40 RPM'},coder:{n:'NIM qwen3-coder-480b',in:0.22,out:0.66,l:'40 RPM'}};
+  const models={fast:{n:'Groq 8b',in:0.05,out:0.08,l:'~unlimited'},quality:{n:'Groq 70b',in:0.59,out:0.79,l:'1k/day'},deepseek:{n:'NIM deepseek-v4-pro',in:0.14,out:0.28,l:'40 RPM'},qwen:{n:'NIM qwen3.5-397b',in:0.20,out:0.60,l:'40 RPM'},coder:{n:'NIM qwen3-coder-480b',in:0.22,out:0.66,l:'40 RPM'}};
   Object.entries(models).forEach(([id,m])=>{const cost=((input/1e6)*m.in+(output/1e6)*m.out);const cur=id===PT.model;ptL('  '+(cur?C.green+'→ '+C.r:'  ')+C.cyan+m.n.padEnd(22)+C.r+'$'+cost.toFixed(5)+'  '+C.gray+m.l+C.r);});
   ptL('');ptL(C.gray+'SWE-bench: Coder 69.6% · DeepSeek V4 ~72% · Qwen 3.5 61.7% · Groq 70b ~60%'+C.r);
 }
@@ -4092,8 +4108,8 @@ function ptCmdTokens(){
 const MODEL_INFO={
   fast:{badge:'Groq',badgeClass:'groq',name:'llama-3.1-8b-instant',ctx:'32K',limit:'~unlimited',swe:null,good:['Instant answers while you build — no wait','Navigation: ls, cat, grep, log, status','Short explanations & quick lookups','Burning zero limit while staying in flow'],avoid:'Full feature builds or anything needing deep reasoning'},
   quality:{badge:'Groq',badgeClass:'groq',name:'llama-3.3-70b-versatile',ctx:'32K',limit:'1,000 req/day',swe:'~60%',good:['Planning sessions & architecture discussions','Explaining what a module or pattern does','Moderate feature scaffolding','Fallback when NIM key not set'],avoid:'Long build sessions — 1k/day cap runs out fast with agentic loops'},
-  deepseek:{badge:'NIM',badgeClass:'nim',name:'deepseek-ai/deepseek-v4-flash',ctx:'64K',limit:'40 RPM free',swe:'~72%',good:['Writing complete app files from scratch','JavaScript, HTML, CSS — deeply trained on web patterns','Building features like notes.tcplants or quant-onco modules','Best all-round free model for this kind of work'],avoid:'Files over ~50K tokens — switch to Qwen or Coder for those'},
-  qwen:{badge:'NIM',badgeClass:'nim',name:'qwen/qwen3.5-122b-a10b',ctx:'131K',limit:'40 RPM free',swe:'61.7%',good:['Reading large codebases in one pass (131K ctx)','Strict instruction following — great for complex prompts','Refactoring across many interconnected files','When you need the model to hold a complex constraint throughout'],avoid:'Pure code generation — DeepSeek V4 or Coder edges it; use this for large context work'},
+  deepseek:{badge:'NIM',badgeClass:'nim',name:'deepseek-ai/deepseek-v4-pro',ctx:'64K',limit:'40 RPM free',swe:'~72%',good:['Writing complete app files from scratch','JavaScript, HTML, CSS — deeply trained on web patterns','Building features like notes.tcplants or quant-onco modules','Best all-round free model for this kind of work'],avoid:'Files over ~50K tokens — switch to Qwen or Coder for those'},
+  qwen:{badge:'NIM',badgeClass:'nim',name:'qwen/qwen3.5-397b-a17b',ctx:'131K',limit:'40 RPM free',swe:'61.7%',good:['Reading large codebases in one pass (131K ctx)','Strict instruction following — great for complex prompts','Refactoring across many interconnected files','When you need the model to hold a complex constraint throughout'],avoid:'Pure code generation — DeepSeek V4 or Coder edges it; use this for large context work'},
   coder:{badge:'NIM',badgeClass:'nim',name:'qwen/qwen3-coder-480b-a35b-instruct',ctx:'256K',limit:'40 RPM free',swe:'69.6%',good:['Agentic build loops — read → plan → write → verify chains','Trained on 7.5T tokens, 70% code — knows web app patterns cold','Best free model for the PhytoTerm <gh> action workflow','Building full single-file apps (tcplants pattern, phyto-studio style)'],avoid:'Nothing specific — purpose-built for exactly this kind of work'},
 };
 
@@ -4132,6 +4148,72 @@ function ptSaveNimKey(model){
   ptSaveSessionState();
 }
 
+// ── Drag & Drop + Image Paste ──────────────────────────────────────────────
+function ptInitDragDrop(){
+  const zone=document.getElementById('pt-xterm');
+  const overlay=document.getElementById('pt-drop-overlay');
+  zone.addEventListener('dragenter',e=>{
+    if(![...e.dataTransfer.types].includes('Files'))return;
+    e.preventDefault();overlay.classList.add('active');
+  });
+  zone.addEventListener('dragover',e=>{
+    if(![...e.dataTransfer.types].includes('Files'))return;
+    e.preventDefault();e.dataTransfer.dropEffect='copy';
+  });
+  zone.addEventListener('dragleave',e=>{if(!zone.contains(e.relatedTarget))overlay.classList.remove('active');});
+  zone.addEventListener('drop',async e=>{
+    e.preventDefault();overlay.classList.remove('active');
+    for(const f of Array.from(e.dataTransfer.files)) await ptHandleFile(f);
+  });
+  document.addEventListener('paste',async e=>{
+    const img=Array.from(e.clipboardData?.items||[]).find(i=>i.type.startsWith('image/'));
+    if(!img)return;
+    e.preventDefault();e.stopPropagation();
+    await ptHandleFile(img.getAsFile(),true);
+  },true);
+}
+async function ptHandleFile(file,isClipboard=false){
+  if(!file)return;
+  ptL('');
+  if(file.type.startsWith('image/')){
+    await ptUploadAsset(file,isClipboard);
+  } else {
+    const text=await file.text().catch(()=>null);
+    if(text===null){ptL(C.red+'Cannot read '+file.name+C.r);return;}
+    const lines=text.split('\n');
+    ptL(C.cyan+'┌─ '+C.b+file.name+C.r+C.gray+' · '+lines.length+' lines · '+(file.size/1024).toFixed(1)+'KB'+C.r);
+    ptW(lines.slice(0,60).map(l=>C.gray+'│'+C.r+' '+l).join('\r\n')+'\r\n');
+    if(lines.length>60) ptL(C.gray+'│  … '+(lines.length-60)+' more lines'+C.r);
+    ptL(C.cyan+'└──'+C.r);
+    PT.messages.push({role:'user',content:'[Attached file: '+file.name+']\n'+text.slice(0,12000)+(text.length>12000?'\n…(truncated at 12K)':'')});
+    ptL(C.gray+'✓ '+C.white+file.name+C.gray+' attached to AI context'+C.r);
+  }
+  ptPrompt();
+}
+async function ptUploadAsset(file,fromClipboard=false){
+  if(!PT.repo||!PT.ghUser){ptL(C.yellow+'→ Not connected yet'+C.r);return;}
+  const ts=new Date().toISOString().replace(/[-:T]/g,'').slice(0,14);
+  const ext=(file.name&&file.name.includes('.')?file.name.split('.').pop():file.type.split('/')[1]||'png').toLowerCase();
+  const path='assets/'+ts+'.'+ext;
+  const src=fromClipboard?'clipboard':file.name;
+  const f=PT_SPIN_GROQ;let n=0;
+  ptW(C.gray+'  '+f[0]+' uploading '+src+'…'+C.r);
+  const tid=setInterval(()=>{ptClear();ptW(C.gray+'  '+f[n++%f.length]+' uploading '+src+'…'+C.r);},120);
+  try{
+    const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+    await ptApiPut('https://api.github.com/repos/'+PT.repo+'/contents/'+path,{message:'asset: '+src,content:b64,branch:PT.branch});
+    clearInterval(tid);
+    const url='https://raw.githubusercontent.com/'+PT.repo+'/'+PT.branch+'/'+path;
+    ptClear();ptL(C.green+'  ✓ '+C.cyan+url+C.r);
+    await navigator.clipboard?.writeText(url).catch(()=>{});
+    ptL(C.gray+'  URL copied to clipboard · attached to AI context'+C.r);
+    PT.messages.push({role:'user',content:'[Image uploaded to repo: '+url+']'});
+  }catch(e){
+    clearInterval(tid);
+    ptClear();ptL(C.red+'  ✗ upload failed: '+e.message+C.r);
+  }
+}
+
 // ── AI backends ────────────────────────────────────────────────────────────
 async function ptCallGroq(messages){
   const workerUrl=(S.workerUrl||'').replace(/\/+$/,'');
@@ -4159,8 +4241,8 @@ function ptSetModel(name){
     ptL(C.b+'Models:'+C.r);
     ptL('  '+C.cyan+'fast     '+C.r+'Groq · llama-3.1-8b-instant   ~unlimited');
     ptL('  '+C.cyan+'quality  '+C.r+'Groq · llama-3.3-70b-versatile 1k req/day');
-    ptL('  '+C.cyan+'deepseek '+C.r+'NIM  · deepseek-v4-flash        40 RPM  '+nimOk);
-    ptL('  '+C.cyan+'qwen     '+C.r+'NIM  · qwen3.5-122b-a10b       40 RPM  '+nimOk+'  131K ctx');
+    ptL('  '+C.cyan+'deepseek '+C.r+'NIM  · deepseek-v4-pro          40 RPM  '+nimOk);
+    ptL('  '+C.cyan+'qwen     '+C.r+'NIM  · qwen3.5-397b-a17b       40 RPM  '+nimOk+'  131K ctx');
     ptL('  '+C.cyan+'coder    '+C.r+'NIM  · qwen3-coder-480b        40 RPM  '+nimOk);
     ptL(C.gray+'  Current: '+C.white+PT.model+C.r);
     return;
@@ -4168,7 +4250,7 @@ function ptSetModel(name){
   PT.model=aliases[name.toLowerCase()]||name;
   document.querySelectorAll('.pt-mpill').forEach(b=>b.classList.toggle('active',b.dataset.model===PT.model));
   ptUpdateTokenBar();
-  const labels={fast:'Groq llama-3.1-8b',quality:'Groq llama-3.3-70b',deepseek:'NIM deepseek-ai/deepseek-v4-flash',qwen:'NIM qwen/qwen3.5-122b-a10b',coder:'NIM qwen/qwen3-coder-480b'};
+  const labels={fast:'Groq llama-3.1-8b',quality:'Groq llama-3.3-70b',deepseek:'NIM deepseek-ai/deepseek-v4-pro',qwen:'NIM qwen/qwen3.5-397b-a17b',coder:'NIM qwen/qwen3-coder-480b'};
   ptL(C.green+'Model → '+C.cyan+(labels[PT.model]||PT.model)+C.r);
   if(NIM_MODEL_IDS[PT.model]&&!PT.nimKey) ptL(C.yellow+'NIM key not set → run: config nim <nvapi-key>'+C.r);
 }
@@ -4217,10 +4299,33 @@ const PT_SYS = 'You are PhytoTerm, an AI dev assistant inside Phyto Studio.\n'+
   '- Be concise in text; complete in code\n'+
   '- Plain text output only — no markdown headers or bullet chars in terminal';
 
+// ── Spinner helpers ────────────────────────────────────────────────────────
+const PT_SPIN_GROQ=['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
+const PT_SPIN_NIM =['◐','◓','◑','◒'];
+function ptSpinFrames(model){return NIM_MODEL_IDS[model]?PT_SPIN_NIM:PT_SPIN_GROQ;}
+const PT_MODEL_LBL={fast:'llama-8b',quality:'llama-70b',deepseek:'deepseek-v4-pro',qwen:'qwen3.5-397b',coder:'qwen3-coder-480b'};
+
+async function ptSpinStep(label,fn){
+  const f=PT_SPIN_GROQ;let n=0;
+  ptW(C.gray+'  '+f[0]+' '+label+C.r);
+  const id=setInterval(()=>{ptClear();ptW(C.gray+'  '+f[n++%f.length]+' '+label+C.r);},120);
+  try{const r=await fn();clearInterval(id);return r;}
+  catch(e){clearInterval(id);ptClear();ptL(C.red+'  ✗ '+label+': '+e.message+C.r);throw e;}
+}
+
 async function ptAskClaude(userInput){
   PT.messages.push({role:'user',content:userInput});
-  let dotN=0; let thinkId=null;
-  const startThink=()=>{stopThink();thinkId=setInterval(()=>{ptClear();ptW(C.gray+'✦ '+['·','··','···','····'][dotN++%4]+C.r);},350);ptClear();ptW(C.gray+'✦ ·'+C.r);};
+  let dotN=0; let thinkId=null; let thinkStart=0;
+  const _frames=ptSpinFrames(PT.model);
+  const _lbl=PT_MODEL_LBL[PT.model]||PT.model;
+  const startThink=()=>{
+    stopThink(); thinkStart=Date.now();
+    thinkId=setInterval(()=>{
+      const s=Math.floor((Date.now()-thinkStart)/1000);
+      ptClear(); ptW(C.gray+_frames[dotN++%_frames.length]+' '+_lbl+(s?' · '+C.cyan+s+'s'+C.gray:'')+C.r);
+    },120);
+    ptClear(); ptW(C.gray+_frames[0]+' '+_lbl+C.r);
+  };
   const stopThink=()=>{if(thinkId){clearInterval(thinkId);thinkId=null;}ptClear();};
   startThink();
   try{

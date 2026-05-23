@@ -80,9 +80,20 @@ html,body{height:100%;background:#0d1117;color:#e6edf3;font-family:'Cascadia Cod
   font-family:system-ui,sans-serif;transition:all .1s;white-space:nowrap;
 }
 .pt-signout-btn:hover{background:#21262d;color:#f85149}
-#pt-xterm{flex:1;overflow:hidden;padding:6px 4px;min-height:0}
+#pt-xterm{flex:1;overflow:hidden;padding:6px 4px;min-height:0;position:relative}
 #pt-xterm .xterm{height:100%}
 #pt-xterm .xterm-viewport{scrollbar-width:thin;scrollbar-color:#30363d transparent}
+#pt-drop-overlay{
+  position:absolute;inset:0;z-index:50;display:none;
+  align-items:center;justify-content:center;flex-direction:column;gap:10px;
+  background:rgba(13,17,23,.85);backdrop-filter:blur(4px);
+  border:2px dashed #58a6ff;border-radius:6px;pointer-events:none;
+}
+#pt-drop-overlay.active{display:flex}
+.pt-drop-icon{font-size:36px;animation:pt-bob .8s ease-in-out infinite alternate}
+.pt-drop-lbl{font-size:15px;font-weight:600;color:#e6edf3;font-family:system-ui,sans-serif}
+.pt-drop-sub{font-size:11px;color:#8b949e;font-family:system-ui,sans-serif}
+@keyframes pt-bob{from{transform:translateY(-4px)}to{transform:translateY(4px)}}
 #pt-statusbar{
   height:22px;background:#1c2128;border-top:1px solid #30363d;
   display:flex;align-items:center;justify-content:space-between;
@@ -198,7 +209,13 @@ html,body{height:100%;background:#0d1117;color:#e6edf3;font-family:'Cascadia Cod
       <button class="pt-signout-btn" onclick="ptSignOut()">Sign out</button>
     </div>
   </div>
-  <div id="pt-xterm"></div>
+  <div id="pt-xterm">
+    <div id="pt-drop-overlay">
+      <div class="pt-drop-icon">⬇</div>
+      <div class="pt-drop-lbl">Drop file to read &amp; attach</div>
+      <div class="pt-drop-sub">text · code · images → auto-uploaded to repo</div>
+    </div>
+  </div>
   <div id="pt-statusbar">
     <span id="pt-status">ready</span>
     <div class="pt-status-right"><span style="color:#3fb950">🔒 phyto-term · all-encrypted</span></div>
@@ -389,8 +406,9 @@ async function ptInit() {
   PT.sessionStart = new Date().toISOString();
 
 
-  ptL(C.bgreen+C.b+'  PhytoTerm'+C.r+C.gray+'  standalone · all-encrypted · Groq+NIM'+C.r);
-  ptL(C.gray+'  Booting…'+C.r);
+  ptL('');
+  ptL(C.bgreen+C.b+'  ⬡ PhytoTerm'+C.r+'  '+C.gray+'Groq · NVIDIA NIM · 🔒 encrypted'+C.r);
+  ptL(C.gray+'  ─────────────────────────────────────'+C.r);
 
   const hadState = ptRestoreSessionState();
   ptUpdateTokenBar();
@@ -398,26 +416,37 @@ async function ptInit() {
 
   ptL('');
   ptL(C.gray+'  '+C.white+'help'+C.gray+' — commands   '+C.white+'exit'+C.gray+' — save & sign out'+C.r);
+  ptL(C.gray+'  drag files or paste images to attach to AI context'+C.r);
   if(hadState&&PT.messages.length) ptL(C.gray+'  AI context: '+Math.floor(PT.messages.length/2)+' exchanges restored'+C.r);
+  ptInitDragDrop();
   ptPrompt();
   PT.term.focus();
 }
 
 async function ptGhBoot(hadState) {
   try {
-    const user = await ptApiGet('https://api.github.com/user');
+    const user = await ptSpinStep('github.com', ()=>ptApiGet('https://api.github.com/user'));
     PT.ghUser = user.login;
     PT.ptOwner = user.login+'/'+PT_REPO;
     if(!PT.repo) PT.repo = user.login+'/phyto-studio';
     document.getElementById('pt-user-lbl').textContent = user.login;
+    ptClear(); ptL(C.green+'  ✓ @'+user.login+C.r);
 
-    const repos = await ptApiGet('https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator');
+    const repos = await ptSpinStep('repos', ()=>ptApiGet('https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator'));
     const sel = document.getElementById('pt-repo-sel');
     sel.innerHTML = repos.map(r=>'<option value="'+r.full_name+'"'+(r.full_name===PT.repo?' selected':'')+'>'+r.full_name+'</option>').join('');
+    ptClear();
 
-    await ptEnsureDataRepo();
-    if(!hadState) await ptLoadContext();
-    await ptLoadBranches(PT.repo);
+    await ptSpinStep('phyto-term', ()=>ptEnsureDataRepo());
+    ptClear(); ptL(C.green+'  ✓ phyto-term'+C.gray+' (encrypted store)'+C.r);
+
+    if(!hadState) {
+      await ptSpinStep('context', ()=>ptLoadContext());
+      ptClear(); ptL(C.green+'  ✓ '+(PT.messages.length?Math.floor(PT.messages.length/2)+' exchanges restored':'fresh session')+C.r);
+    }
+
+    await ptSpinStep(PT.repo.split('/')[1]||PT.repo, ()=>ptLoadBranches(PT.repo));
+    ptClear(); ptL(C.green+'  ✓ '+PT.branch+C.r);
     ptUpdateStatus('ready');
   } catch(e) { ptL(C.yellow+'  Warning: '+e.message+C.r); }
 }
@@ -830,8 +859,8 @@ function ptCmdTokens() {
   const models={
     fast:    {n:'Groq llama-3.1-8b',        in:0.05, out:0.08, limit:'~unlimited · 500k TPM'},
     quality: {n:'Groq llama-3.3-70b',       in:0.59, out:0.79, limit:'1,000 req/day · 6k TPM'},
-    deepseek:{n:'NIM deepseek-v4-flash',      in:0.14, out:0.28, limit:'40 RPM · no daily cap'},
-    qwen:    {n:'NIM qwen3.5-122b-a10b',     in:0.20, out:0.60, limit:'40 RPM · 131K ctx'},
+    deepseek:{n:'NIM deepseek-v4-pro',        in:0.14, out:0.28, limit:'40 RPM · no daily cap'},
+    qwen:    {n:'NIM qwen3.5-397b-a17b',     in:0.20, out:0.60, limit:'40 RPM · 131K ctx'},
     coder:   {n:'NIM qwen3-coder-480b-a35b', in:0.22, out:0.66, limit:'40 RPM · 256K ctx'},
   };
   Object.entries(models).forEach(([id,m])=>{
@@ -872,7 +901,7 @@ const MODEL_INFO = {
   },
   deepseek: {
     badge:'NIM', badgeClass:'nim',
-    name:'deepseek-ai/deepseek-v4-flash',
+    name:'deepseek-ai/deepseek-v4-pro',
     ctx:'64K', limit:'40 RPM free', swe:'~72%',
     good:[
       'Writing complete app files from scratch',
@@ -884,7 +913,7 @@ const MODEL_INFO = {
   },
   qwen: {
     badge:'NIM', badgeClass:'nim',
-    name:'qwen/qwen3.5-122b-a10b',
+    name:'qwen/qwen3.5-397b-a17b',
     ctx:'131K', limit:'40 RPM free', swe:'61.7%',
     good:[
       'Reading large codebases in one pass (131K ctx)',
@@ -1005,8 +1034,8 @@ function ptSetModel(name) {
     ptL(C.b+'Models:'+C.r);
     ptL('  '+C.cyan+'fast     '+C.r+'Groq · llama-3.1-8b-instant   · ~unlimited');
     ptL('  '+C.cyan+'quality  '+C.r+'Groq · llama-3.3-70b-versatile · 1,000 req/day');
-    ptL('  '+C.cyan+'deepseek '+C.r+'NIM  · deepseek-ai/deepseek-v4-flash  · 40 RPM free  '+nimOk);
-    ptL('  '+C.cyan+'qwen     '+C.r+'NIM  · qwen/qwen3.5-122b-a10b        · 40 RPM free  '+nimOk+'  131K ctx');
+    ptL('  '+C.cyan+'deepseek '+C.r+'NIM  · deepseek-ai/deepseek-v4-pro    · 40 RPM free  '+nimOk);
+    ptL('  '+C.cyan+'qwen     '+C.r+'NIM  · qwen/qwen3.5-397b-a17b        · 40 RPM free  '+nimOk+'  131K ctx');
     ptL(C.gray+'  Current: '+C.white+PT.model+C.r);
     if(!PT.nimKey) ptL(C.yellow+'  NIM key missing → config nim <nvapi-key>'+C.r);
     return;
@@ -1014,7 +1043,7 @@ function ptSetModel(name) {
   PT.model=aliases[name.toLowerCase()]||name;
   document.querySelectorAll('.pt-mpill').forEach(b=>b.classList.toggle('active',b.dataset.model===PT.model));
   ptUpdateTokenBar();
-  const labels={fast:'Groq llama-3.1-8b',quality:'Groq llama-3.3-70b',deepseek:'NIM deepseek-ai/deepseek-v4-flash',qwen:'NIM qwen/qwen3.5-122b-a10b',coder:'NIM qwen/qwen3-coder-480b'};
+  const labels={fast:'Groq llama-3.1-8b',quality:'Groq llama-3.3-70b',deepseek:'NIM deepseek-ai/deepseek-v4-pro',qwen:'NIM qwen/qwen3.5-397b-a17b',coder:'NIM qwen/qwen3-coder-480b'};
   ptL(C.green+'Model → '+C.cyan+(labels[PT.model]||PT.model)+C.r);
   if((PT.model==='deepseek'||PT.model==='qwen')&&!PT.nimKey)
     ptL(C.yellow+'NIM key not set → run: config nim <nvapi-key>'+C.r);
@@ -1106,8 +1135,8 @@ async function ptCallGroq(messages) {
 }
 
 const NIM_MODEL_IDS = {
-  deepseek: 'deepseek-ai/deepseek-v4-flash',
-  qwen:     'qwen/qwen3.5-122b-a10b',
+  deepseek: 'deepseek-ai/deepseek-v4-pro',
+  qwen:     'qwen/qwen3.5-397b-a17b',
   coder:    'qwen/qwen3-coder-480b-a35b-instruct',
 };
 
@@ -1128,10 +1157,34 @@ async function ptCallAI(messages) {
   return ptCallGroq(messages);
 }
 
+// ── Spinner helpers ───────────────────────────────────────────────────────
+const PT_SPIN_GROQ = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
+const PT_SPIN_NIM  = ['◐','◓','◑','◒'];
+const PT_SPIN_PLAIN= ['·','··','···','····'];
+function ptSpinFrames(model){ return NIM_MODEL_IDS[model]?PT_SPIN_NIM:PT_SPIN_GROQ; }
+const PT_MODEL_LBL = {fast:'llama-8b',quality:'llama-70b',deepseek:'deepseek-v4-pro',qwen:'qwen3.5-397b',coder:'qwen3-coder-480b'};
+
+async function ptSpinStep(label, fn) {
+  const f=PT_SPIN_GROQ; let n=0;
+  ptW(C.gray+'  '+f[0]+' '+label+C.r);
+  const id=setInterval(()=>{ptClear();ptW(C.gray+'  '+f[n++%f.length]+' '+label+C.r);},120);
+  try{ const r=await fn(); clearInterval(id); return r; }
+  catch(e){ clearInterval(id); ptClear(); ptL(C.red+'  ✗ '+label+': '+e.message+C.r); throw e; }
+}
+
 async function ptAskClaude(userInput) {
   PT.messages.push({role:'user',content:userInput});
-  let dotN=0; let thinkId=null;
-  const startThink=()=>{stopThink();thinkId=setInterval(()=>{ptClear();ptW(C.gray+'✦ '+['·','··','···','····'][dotN++%4]+C.r);},350);ptClear();ptW(C.gray+'✦ ·'+C.r);};
+  let dotN=0; let thinkId=null; let thinkStart=0;
+  const _frames=ptSpinFrames(PT.model);
+  const _lbl=PT_MODEL_LBL[PT.model]||PT.model;
+  const startThink=()=>{
+    stopThink(); thinkStart=Date.now();
+    thinkId=setInterval(()=>{
+      const s=Math.floor((Date.now()-thinkStart)/1000);
+      ptClear(); ptW(C.gray+_frames[dotN++%_frames.length]+' '+_lbl+(s?' · '+C.cyan+s+'s'+C.gray:'')+C.r);
+    },120);
+    ptClear(); ptW(C.gray+_frames[0]+' '+_lbl+C.r);
+  };
   const stopThink=()=>{if(thinkId){clearInterval(thinkId);thinkId=null;}ptClear();};
   startThink();
   try {
@@ -1184,6 +1237,80 @@ async function ptExecGhAction(action) {
     case 'get_commits':{const n=action.n||10;ptL(C.gray+'✦ fetching commits…'+C.r);const cs=await ptApiGet(base+'/commits?sha='+branch+'&per_page='+n);cs.forEach(c=>ptL(C.yellow+c.sha.slice(0,7)+C.r+' '+c.commit.message.split('\n')[0]));return cs.map(c=>c.sha.slice(0,7)+' '+c.commit.message.split('\n')[0]).join('\n');}
     case 'create_issue':{ptL(C.gray+'✦ creating issue…'+C.r);const issue=await ptApiPost('https://api.github.com/repos/'+repo+'/issues',{title:action.title,body:action.body||''});ptL(C.green+'✓ Issue #'+issue.number+': '+issue.title+C.r);return 'Created issue #'+issue.number;}
     default: return 'Unknown action: '+action.action;
+  }
+}
+
+// ── Drag & Drop + Image Paste ─────────────────────────────────────────────
+function ptInitDragDrop() {
+  const zone    = document.getElementById('pt-xterm');
+  const overlay = document.getElementById('pt-drop-overlay');
+
+  zone.addEventListener('dragenter', e => {
+    if(![...e.dataTransfer.types].includes('Files')) return;
+    e.preventDefault(); overlay.classList.add('active');
+  });
+  zone.addEventListener('dragover', e => {
+    if(![...e.dataTransfer.types].includes('Files')) return;
+    e.preventDefault(); e.dataTransfer.dropEffect='copy';
+  });
+  zone.addEventListener('dragleave', e => {
+    if(!zone.contains(e.relatedTarget)) overlay.classList.remove('active');
+  });
+  zone.addEventListener('drop', async e => {
+    e.preventDefault(); overlay.classList.remove('active');
+    for(const f of Array.from(e.dataTransfer.files)) await ptHandleFile(f);
+  });
+
+  // Image paste — capture before xterm eats the event
+  document.addEventListener('paste', async e => {
+    const img = Array.from(e.clipboardData?.items||[]).find(i=>i.type.startsWith('image/'));
+    if(!img) return;
+    e.preventDefault(); e.stopPropagation();
+    await ptHandleFile(img.getAsFile(), true);
+  }, true);
+}
+
+async function ptHandleFile(file, isClipboard=false) {
+  if(!file) return;
+  ptL('');
+  if(file.type.startsWith('image/')) {
+    await ptUploadAsset(file, isClipboard);
+  } else {
+    const text = await file.text().catch(()=>null);
+    if(text===null){ptL(C.red+'Cannot read '+file.name+C.r);return;}
+    const lines = text.split('\n');
+    ptL(C.cyan+'┌─ '+C.b+file.name+C.r+C.gray+' · '+lines.length+' lines · '+(file.size/1024).toFixed(1)+'KB'+C.r);
+    ptW(lines.slice(0,60).map(l=>C.gray+'│'+C.r+' '+l).join('\r\n')+'\r\n');
+    if(lines.length>60) ptL(C.gray+'│  … '+(lines.length-60)+' more lines'+C.r);
+    ptL(C.cyan+'└──'+C.r);
+    PT.messages.push({role:'user',content:'[Attached file: '+file.name+']\n'+text.slice(0,12000)+(text.length>12000?'\n…(truncated at 12K)':'')});
+    ptL(C.gray+'✓ '+C.white+file.name+C.gray+' attached to AI context'+C.r);
+  }
+  ptPrompt();
+}
+
+async function ptUploadAsset(file, fromClipboard=false) {
+  if(!PT.repo||!PT.ghUser) { ptL(C.yellow+'→ Not connected yet'+C.r); return; }
+  const ts  = new Date().toISOString().replace(/[-:T]/g,'').slice(0,14);
+  const ext = (file.name&&file.name.includes('.')?file.name.split('.').pop():file.type.split('/')[1]||'png').toLowerCase();
+  const path = 'assets/'+ts+'.'+ext;
+  const src  = fromClipboard ? 'clipboard' : file.name;
+
+  const f=PT_SPIN_GROQ; let n=0;
+  ptW(C.gray+'  '+f[0]+' uploading '+src+'…'+C.r);
+  const tid=setInterval(()=>{ptClear();ptW(C.gray+'  '+f[n++%f.length]+' uploading '+src+'…'+C.r);},120);
+  try {
+    const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+    await ptApiPut('https://api.github.com/repos/'+PT.repo+'/contents/'+path,{message:'asset: '+src,content:b64,branch:PT.branch});
+    clearInterval(tid);
+    const url='https://raw.githubusercontent.com/'+PT.repo+'/'+PT.branch+'/'+path;
+    ptClear(); ptL(C.green+'  ✓ '+C.cyan+url+C.r);
+    await navigator.clipboard?.writeText(url).catch(()=>{});
+    ptL(C.gray+'  URL copied to clipboard · attached to AI context'+C.r);
+    PT.messages.push({role:'user',content:'[Image uploaded to repo: '+url+']'});
+  } catch(e) {
+    clearInterval(tid);
+    ptClear(); ptL(C.red+'  ✗ upload failed: '+e.message+C.r);
   }
 }
 
