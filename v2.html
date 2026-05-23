@@ -83,6 +83,48 @@ input,select,textarea,button{font-family:inherit}
 .dash-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .dash-section-hdr h3{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
 .pres-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(208px,1fr));gap:18px}
+/* Stats strip */
+.stat-strip{display:flex;gap:10px;padding:14px 28px;border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0}
+.stat-strip::-webkit-scrollbar{display:none}
+.stat-card{background:var(--surface2);border-radius:var(--r2);padding:11px 16px;min-width:100px;display:flex;flex-direction:column;gap:3px;flex-shrink:0;border:1px solid transparent;cursor:default;transition:border-color .15s}
+.stat-card:hover{border-color:var(--border2)}
+.stat-card.accent{background:var(--accent-bg);border-color:var(--accent)}
+.stat-num{font-size:22px;font-weight:700;color:var(--text);line-height:1;font-variant-numeric:tabular-nums}
+.stat-lbl{font-size:11px;color:var(--text2);font-weight:500}
+.stat-card.accent .stat-num,.stat-card.accent .stat-lbl{color:var(--accent)}
+/* Greeting */
+.dash-greeting{padding:22px 28px 0;display:flex;align-items:baseline;gap:10px;flex-shrink:0}
+.dash-greeting-text{font-size:19px;font-weight:700;color:var(--text)}
+.dash-greeting-sub{font-size:13px;color:var(--text2)}
+/* Featured strip */
+.featured-wrap{padding:18px 28px 4px;flex-shrink:0}
+.featured-label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.featured-strip{display:flex;gap:14px;overflow-x:auto;padding-bottom:4px}
+.featured-strip::-webkit-scrollbar{height:3px}
+.featured-strip::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.featured-card{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r2);cursor:pointer;flex-shrink:0;width:260px;overflow:hidden;transition:box-shadow .15s,border-color .15s,transform .1s}
+.featured-card:hover{box-shadow:var(--sh2);border-color:var(--border2);transform:translateY(-2px)}
+.featured-thumb{height:146px;overflow:hidden;position:relative}
+.featured-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.featured-info{padding:10px 12px 12px}
+.featured-title{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.featured-meta{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)}
+/* Grid header with sort */
+.grid-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.grid-hdr-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+.sort-sel{height:26px;border:1px solid var(--border);border-radius:var(--r);font-size:11px;font-family:var(--font);color:var(--text2);background:var(--bg);padding:0 6px;cursor:pointer;outline:none}
+.sort-sel:hover,.sort-sel:focus{border-color:var(--accent);color:var(--text)}
+/* Thumb fallback */
+.thumb-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;color:rgba(255,255,255,.85);font-family:var(--font);letter-spacing:-1px;user-select:none}
+/* Card improvements */
+.card-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+.card-slides{font-size:10px;color:var(--text3)}
+.card-time{font-size:10px;color:var(--text3)}
+/* Empty state */
+.dash-empty{grid-column:1/-1;text-align:center;padding:56px 20px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.dash-empty-icon{font-size:44px;opacity:.25;line-height:1}
+.dash-empty h3{font-size:15px;font-weight:600;color:var(--text)}
+.dash-empty p{font-size:13px;color:var(--text2);max-width:280px;line-height:1.5}
 .pres-card{background:var(--bg);border-radius:var(--r2);border:1.5px solid var(--border);cursor:pointer;transition:box-shadow .15s,border-color .15s,transform .1s;overflow:hidden;user-select:none}
 .pres-card:hover{box-shadow:var(--sh2);border-color:var(--border2);transform:translateY(-2px)}
 .pres-card.new-card{border-style:dashed;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:168px;color:var(--text3)}
@@ -576,6 +618,8 @@ async function handleAuth(){
 // ===================== DASHBOARD =====================
 async function mountDashboard(){
   S.view='dashboard';
+  const hr=new Date().getHours();
+  const greet=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
   document.getElementById('app').innerHTML=`
   <div id="dash-view">
     <div class="dash-hdr">
@@ -587,15 +631,33 @@ async function mountDashboard(){
         <button class="brand-tab${S.brand==='carnivorousplants'?' active':''}" data-brand="carnivorousplants">Carnivorous Plants</button>
       </div>
       <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
-        <div class="dash-search"><span class="dash-search-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span><input id="dash-q" type="text" placeholder="Search…" oninput="filterDash(this.value)"></div>
+        <div class="dash-search"><span class="dash-search-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span><input id="dash-q" type="text" placeholder="Search presentations…" oninput="filterDash(this.value)"></div>
         <button class="btn btn-ghost btn-sm" onclick="openHelpPanel('start')" title="Help (?)">?</button>
         <button class="btn btn-ghost btn-sm" onclick="openDashSettings()" title="Settings">⚙</button>
         <button class="btn btn-ghost btn-sm" onclick="cycleTheme()">◑</button>
         <button class="btn btn-ghost btn-sm" onclick="signOut()">Sign out</button>
       </div>
     </div>
+    <div id="dash-stat-strip" class="stat-strip">
+      <div class="stat-card" style="opacity:.5"><div class="stat-num">—</div><div class="stat-lbl">Loading…</div></div>
+    </div>
     <div class="dash-body">
+      <div class="dash-greeting">
+        <div class="dash-greeting-text" id="dash-greet-text">${greet}</div>
+        <div class="dash-greeting-sub" id="dash-greet-sub"></div>
+      </div>
+      <div id="featured-wrap"></div>
       <div class="dash-section">
+        <div class="grid-hdr">
+          <div class="grid-hdr-title" id="grid-hdr-title">All Presentations</div>
+          <select class="sort-sel" id="sort-sel" onchange="renderDashGrid(S.presentations)">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="az">A → Z</option>
+            <option value="za">Z → A</option>
+            <option value="published">Published first</option>
+          </select>
+        </div>
         <div class="pres-grid" id="pres-grid"><div style="color:var(--text3);font-size:13px;padding:20px 0">Loading…</div></div>
       </div>
     </div>
@@ -608,25 +670,127 @@ async function mountDashboard(){
     const q=document.getElementById('dash-q')?.value||'';
     filterDash(q);
   });
+  // Keyboard shortcuts: N = new, / = search focus
+  document._dashKeys=e=>{
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+    if(e.key==='n'||e.key==='N'){openNewPresModal();}
+    else if(e.key==='/'){e.preventDefault();document.getElementById('dash-q')?.focus();}
+  };
+  document.addEventListener('keydown',document._dashKeys);
   try{
     await loadCatalogue();
     renderBrandTabs();
+    renderStatStrip(S.presentations);
+    renderDashGreeting(S.presentations);
+    renderFeatured(S.presentations);
     renderDashGrid(S.presentations);
   }catch(e){toast('Failed to load: '+e.message,'err');}
 }
 
+// ===================== DASHBOARD HELPERS =====================
+function timeAgo(iso){
+  if(!iso)return'';
+  const d=new Date(iso),now=Date.now(),diff=now-d.getTime();
+  const m=Math.floor(diff/60000),h=Math.floor(diff/3600000),dy=Math.floor(diff/86400000);
+  if(m<2)return'just now';
+  if(m<60)return m+'m ago';
+  if(h<24)return h+'h ago';
+  if(dy<7)return dy+'d ago';
+  return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+}
+
+const BRAND_GRAD={
+  phytolabs:'linear-gradient(135deg,#1a535c,#0d7377)',
+  tcplants:'linear-gradient(135deg,#52796f,#2d6a4f)',
+  carnivorousplants:'linear-gradient(135deg,#2d6a4f,#1b4332)',
+  all:'linear-gradient(135deg,#1a6b55,#145a46)',
+};
+
+function thumbFallback(p){
+  const grad=BRAND_GRAD[p.brand]||BRAND_GRAD.all;
+  const letter=(p.title||'?')[0].toUpperCase();
+  return`<div class="thumb-fallback" style="background:${grad}">${letter}</div>`;
+}
+
+function renderStatStrip(list){
+  const el=document.getElementById('dash-stat-strip');if(!el)return;
+  const total=list.length;
+  const pub=list.filter(p=>p.status==='published').length;
+  const draft=list.filter(p=>p.status==='draft').length;
+  const slides=list.reduce((a,p)=>a+(p.slides_count||0),0);
+  const brands=[...new Set(list.map(p=>p.brand).filter(Boolean))].length;
+  el.innerHTML=[
+    {n:total,l:'Presentations',accent:false},
+    {n:pub,l:'Published',accent:true},
+    {n:draft,l:'Drafts',accent:false},
+    {n:slides,l:'Total Slides',accent:false},
+    {n:brands,l:'Brands',accent:false},
+  ].map(s=>`<div class="stat-card${s.accent?' accent':''}"><div class="stat-num">${s.n}</div><div class="stat-lbl">${s.l}</div></div>`).join('');
+}
+
+function renderDashGreeting(list){
+  const sub=document.getElementById('dash-greet-sub');
+  if(!sub)return;
+  const recent=list.slice().sort((a,b)=>new Date(b.updated||b.created)-new Date(a.updated||a.created))[0];
+  if(recent)sub.textContent='Last edited "'+recent.title+'" '+timeAgo(recent.updated||recent.created);
+  else sub.textContent='Create your first presentation below.';
+}
+
+function renderFeatured(list){
+  const wrap=document.getElementById('featured-wrap');if(!wrap)return;
+  const recent=list.slice().sort((a,b)=>new Date(b.updated||b.created)-new Date(a.updated||a.created)).slice(0,5);
+  if(recent.length===0){wrap.innerHTML='';return;}
+  wrap.innerHTML=`
+    <div class="featured-wrap">
+      <div class="featured-label">Recently Edited</div>
+      <div class="featured-strip">${recent.map(p=>{
+        const meta=statusMeta(p);
+        const thumb=p.thumbnail?`<img src="${p.thumbnail}" alt="">`:`<div class="thumb-fallback" style="background:${BRAND_GRAD[p.brand]||BRAND_GRAD.all};font-size:52px">${(p.title||'?')[0].toUpperCase()}</div>`;
+        return`<div class="featured-card" onclick="openEditor('${escHtml(p.slug)}')">
+          <div class="featured-thumb">${thumb}</div>
+          <div class="featured-info">
+            <div class="featured-title">${escHtml(p.title)}</div>
+            <div class="featured-meta">
+              <span class="status-pip ${meta.cls}"></span>
+              <span>${meta.label}</span>
+              <span style="margin-left:auto">${timeAgo(p.updated||p.created)}</span>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}</div>
+    </div>`;
+}
+
 function renderDashGrid(list){
-  const filtered=(S.brand==='all'?list:list.filter(p=>p.brand===S.brand)).slice().reverse();
+  const sort=document.getElementById('sort-sel')?.value||'newest';
+  let filtered=(S.brand==='all'?list:list.filter(p=>p.brand===S.brand)).slice();
+  if(sort==='newest')filtered.sort((a,b)=>new Date(b.updated||b.created)-new Date(a.updated||a.created));
+  else if(sort==='oldest')filtered.sort((a,b)=>new Date(a.updated||a.created)-new Date(b.updated||b.created));
+  else if(sort==='az')filtered.sort((a,b)=>a.title.localeCompare(b.title));
+  else if(sort==='za')filtered.sort((a,b)=>b.title.localeCompare(a.title));
+  else if(sort==='published')filtered.sort((a,b)=>(a.status==='published'?-1:1)-(b.status==='published'?-1:1));
   const grid=document.getElementById('pres-grid');
   if(!grid)return;
+  const hdr=document.getElementById('grid-hdr-title');
+  if(hdr)hdr.textContent=(S.brand==='all'?'All':S.brand==='phytolabs'?'Phyto Labs':S.brand==='tcplants'?'TC Plants':'Carnivorous Plants')+' Presentations';
   let html=`<div class="pres-card new-card">
     <div class="new-card-plus">+</div><div class="new-card-lbl">New Presentation</div></div>`;
+  if(filtered.length===0){
+    html+=`<div class="dash-empty">
+      <div class="dash-empty-icon">📂</div>
+      <h3>Nothing here yet</h3>
+      <p>Switch brand tab or create a new presentation to get started.</p>
+      <button class="btn btn-primary" onclick="openNewPresModal()">+ New Presentation</button>
+    </div>`;
+  }
   filtered.forEach(p=>{
     const meta=statusMeta(p);
     const hasShare=p.status==='published'&&p.viewKey;
     const thumb=p.thumbnail
       ?`<img src="${p.thumbnail}" alt="" style="width:100%;height:100%;object-fit:cover;display:block">`
-      :`<div class="card-thumb-empty"></div>`;
+      :thumbFallback(p);
+    const slides=p.slides_count?`${p.slides_count} slide${p.slides_count!==1?'s':''}`:'';
+    const ago=timeAgo(p.updated||p.created);
     html+=`<div class="pres-card" data-slug="${escHtml(p.slug)}" data-viewkey="${hasShare?escHtml(p.viewKey):''}">
       <div class="card-thumb">${thumb}</div>
       <div class="card-info">
@@ -636,9 +800,13 @@ function renderDashGrid(list){
           <span>${meta.label}</span>
           <span class="brand-tag">${p.brand||'all'}</span>
         </div>
-        <div style="display:flex;gap:6px;margin-top:10px">
+        <div class="card-bottom">
+          <span class="card-slides">${slides}</span>
+          <span class="card-time">${ago}</span>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px">
           <button class="btn btn-secondary btn-sm" style="flex:1" data-action="edit">Edit</button>
-          <button class="btn ${hasShare?'btn-primary':'btn-ghost'} btn-sm" style="flex:1${hasShare?'':';opacity:.5'}" data-action="share" ${hasShare?'':'disabled'}>Share</button>
+          <button class="btn ${hasShare?'btn-primary':'btn-ghost'} btn-sm" style="flex:1${hasShare?'':';opacity:.4'}" data-action="share" ${hasShare?'':'disabled'} title="${hasShare?'Copy share link':'Publish to get a share link'}">Share</button>
         </div>
       </div>
     </div>`;
@@ -700,6 +868,8 @@ function saveDashSettings(){
 function filterDash(q){
   const lq=q.toLowerCase();
   const filtered=lq?S.presentations.filter(p=>p.title.toLowerCase().includes(lq)||p.description?.toLowerCase().includes(lq)):S.presentations;
+  renderStatStrip(filtered);
+  if(!lq)renderFeatured(S.presentations);
   renderDashGrid(filtered);
 }
 
@@ -798,6 +968,7 @@ function blankSlideJson(){
 
 // ===================== EDITOR =====================
 async function openEditor(slug){
+  if(document._dashKeys){document.removeEventListener('keydown',document._dashKeys);document._dashKeys=null;}
   S.view='editor';
   document.getElementById('app').innerHTML=`
   <div id="editor-view">
