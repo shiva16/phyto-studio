@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Phyto Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Roboto:ital,wght@0,400;0,700;1,400&family=Lato:ital,wght@0,400;0,700;1,400&family=Montserrat:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:ital,wght@0,400;0,600;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Oswald:wght@400;600&family=Raleway:ital,wght@0,400;0,700;1,400&family=Nunito:ital,wght@0,400;0,700;1,400&family=Open+Sans:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,wght@0,400;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <style>
@@ -128,7 +128,8 @@ input,select,textarea,button{font-family:inherit}
 .ed-hdr-right{margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0}
 
 /* Toolbar */
-#ed-tb{height:var(--tb);background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 8px;gap:2px;flex-shrink:0;overflow:visible;position:relative;z-index:50}
+#ed-tb{height:var(--tb);background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 8px;gap:2px;flex-shrink:0;overflow-x:auto;overflow-y:visible;position:relative;z-index:50}
+#ed-tb::-webkit-scrollbar{height:0}
 .tb-sep{width:1px;height:22px;background:var(--border);margin:0 4px;flex-shrink:0}
 .tb-btn{width:30px;height:30px;border:none;border-radius:var(--r);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text2);transition:background .1s,color .1s;flex-shrink:0;position:relative}
 .tb-btn:hover{background:var(--surface2);color:var(--text)}
@@ -144,6 +145,19 @@ input,select,textarea,button{font-family:inherit}
 .csb-bar{width:18px;height:3px;border-radius:2px}
 .zoom-lbl{font-size:12px;color:var(--text2);min-width:38px;text-align:center;flex-shrink:0;cursor:pointer;padding:2px 4px;border-radius:var(--r)}
 .zoom-lbl:hover{background:var(--surface2)}
+/* Font picker */
+.tb-font-picker{position:relative;flex-shrink:0}
+.tb-font-btn{height:28px;width:162px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);color:var(--text);font-size:12px;cursor:pointer;display:flex;align-items:center;padding:0 8px;gap:4px;overflow:hidden;white-space:nowrap;transition:border-color .15s;flex-shrink:0}
+.tb-font-btn:hover,.tb-font-btn:focus{border-color:var(--accent);outline:none}
+.tb-font-display{flex:1;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.tb-font-chevron{color:var(--text3);font-size:9px;flex-shrink:0}
+.tb-font-dropdown{position:absolute;top:calc(100% + 3px);left:0;width:210px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r2);box-shadow:var(--sh2);z-index:2000;display:none;flex-direction:column}
+.tb-font-dropdown.open{display:flex}
+.tb-font-search{border:none;border-bottom:1px solid var(--border);padding:7px 10px;font-size:12px;font-family:var(--font);color:var(--text);background:var(--bg);outline:none;border-radius:var(--r2) var(--r2) 0 0;width:100%}
+.tb-font-list{max-height:260px;overflow-y:auto}
+.tb-font-item{padding:7px 12px;font-size:14px;cursor:pointer;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.tb-font-item:hover{background:var(--accent-bg);color:var(--accent)}
+.tb-font-item.active{background:var(--accent-bg);color:var(--accent);font-weight:600}
 
 /* Shape dropdown */
 .shape-picker{position:absolute;top:calc(100% + 4px);left:0;background:var(--bg);border:1px solid var(--border);border-radius:var(--r2);box-shadow:var(--sh2);padding:8px;display:none;grid-template-columns:repeat(4,32px);gap:4px;z-index:500}
@@ -304,7 +318,7 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-bottom:2px 
 // ===================== CONSTANTS =====================
 const GH_OWNER='shiva16', GH_REPO='phyto-studio', GH_BRANCH='main';
 const SLIDE_W=1280, SLIDE_H=720;
-const FONTS=['Plus Jakarta Sans','Inter','Arial','Georgia','Verdana','Trebuchet MS','Times New Roman','Courier New','Impact','Palatino','Garamond'];
+const FONTS=['Plus Jakarta Sans','Poppins','DM Sans','Nunito','Open Sans','Lato','Raleway','Montserrat','Roboto','Oswald','Inter','Playfair Display','Merriweather','Libre Baskerville','Georgia','Garamond','Palatino','Times New Roman','Arial','Verdana','Trebuchet MS','Impact','Courier New','Source Code Pro'];
 const FONT_SIZES=[8,9,10,11,12,14,16,18,20,24,28,32,36,40,48,56,64,72,96];
 const BRAND_COLORS={phytolabs:'#1a535c',tcplants:'#52796f',carnivorousplants:'#2d6a4f',all:'#1a6b55'};
 const SHAPE_FILL_DEFAULTS=['#4285f4','#34a853','#fbbc04','#ea4335','#9c27b0','#00bcd4','#ff5722','#607d8b'];
@@ -878,14 +892,27 @@ async function openEditor(slug){
       </div>
       <button class="tb-btn" id="tool-image" data-tip="Image" onclick="promptImage()">Img</button>
       <div class="tb-sep"></div>
-      <select class="tb-sel" id="tb-font" style="width:110px" onchange="applyFont(this.value)" title="Font family">
-        ${FONTS.map(f=>`<option value="${f}">${f}</option>`).join('')}
-      </select>
+      <div class="tb-font-picker">
+        <button class="tb-font-btn" id="tb-font-btn" onclick="toggleFontPicker(event)" title="Font family">
+          <span class="tb-font-display" id="tb-font-display">Plus Jakarta Sans</span><span class="tb-font-chevron">▾</span>
+        </button>
+        <div class="tb-font-dropdown" id="tb-font-dropdown">
+          <input class="tb-font-search" id="tb-font-search" type="text" placeholder="Search fonts…" oninput="filterFonts(this.value)" onclick="event.stopPropagation()">
+          <div class="tb-font-list" id="tb-font-list">
+            ${FONTS.map(f=>`<div class="tb-font-item" data-font="${f}" style="font-family:'${f}',sans-serif" onclick="applyFont('${f}')">${f}</div>`).join('')}
+          </div>
+        </div>
+      </div>
       <input class="tb-num" id="tb-size" type="number" value="24" min="1" max="400" title="Font size" onchange="applyFontSize(this.value)">
       <div class="tb-sep"></div>
       <button class="tb-btn" id="tb-bold" data-tip="Bold (Ctrl+B)" onclick="toggleBold()" style="font-weight:700">B</button>
       <button class="tb-btn" id="tb-italic" data-tip="Italic (Ctrl+I)" onclick="toggleItalic()" style="font-style:italic">I</button>
       <button class="tb-btn" id="tb-underline" data-tip="Underline (Ctrl+U)" onclick="toggleUnderline()" style="text-decoration:underline">U</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" id="tb-tal" data-tip="Text align left" onclick="applyTextAlign('left')"><svg width="14" height="12" viewBox="0 0 14 12" fill="currentColor"><rect width="14" height="2" rx="1"/><rect y="5" width="9" height="2" rx="1"/><rect y="10" width="11" height="2" rx="1"/></svg></button>
+      <button class="tb-btn" id="tb-tac" data-tip="Text center" onclick="applyTextAlign('center')"><svg width="14" height="12" viewBox="0 0 14 12" fill="currentColor"><rect width="14" height="2" rx="1"/><rect x="2.5" y="5" width="9" height="2" rx="1"/><rect x="1.5" y="10" width="11" height="2" rx="1"/></svg></button>
+      <button class="tb-btn" id="tb-tar" data-tip="Text align right" onclick="applyTextAlign('right')"><svg width="14" height="12" viewBox="0 0 14 12" fill="currentColor"><rect width="14" height="2" rx="1"/><rect x="5" y="5" width="9" height="2" rx="1"/><rect x="3" y="10" width="11" height="2" rx="1"/></svg></button>
+      <button class="tb-btn" id="tb-taj" data-tip="Justify text" onclick="applyTextAlign('justify')"><svg width="14" height="12" viewBox="0 0 14 12" fill="currentColor"><rect width="14" height="2" rx="1"/><rect y="5" width="14" height="2" rx="1"/><rect y="10" width="14" height="2" rx="1"/></svg></button>
       <div class="tb-sep"></div>
       <button class="color-swatch-btn" id="tb-fill-btn" data-tip="Fill color" onclick="pickColor('fill')">
         <span class="csb-icon">▧</span><div class="csb-bar" id="fill-bar" style="background:#4285f4"></div>
@@ -968,6 +995,7 @@ function backToDash(){
   if(S.dirty){if(!confirm('Unsaved changes. Leave anyway?'))return;}
   document.removeEventListener('click',_editorMenuCloseHandler);
   if(S.fc){S.fc.dispose();S.fc=null;}
+  S._pendingAiBrief=null;
   mountDashboard();
 }
 
@@ -1398,6 +1426,7 @@ function toggleUnderline(){
 function applyFont(f){
   const o=S.fc?.getActiveObject();if(!o)return;
   o.set('fontFamily',f);S.fc.renderAll();pushHistory();
+  setFontPickerValue(f);closeFontPicker();
 }
 function applyFontSize(v){
   const o=S.fc?.getActiveObject();if(!isTextObj(o))return;
@@ -1444,6 +1473,53 @@ function updateSwatches(obj){
   if(sb)sb.style.background=obj.stroke||'transparent';
 }
 
+// ===================== FONT PICKER =====================
+function toggleFontPicker(e){
+  e.stopPropagation();
+  const dd=document.getElementById('tb-font-dropdown');if(!dd)return;
+  const isOpen=dd.classList.toggle('open');
+  if(isOpen){
+    const sf=document.getElementById('tb-font-search');
+    if(sf){sf.value='';sf.focus();}
+    filterFonts('');
+    const obj=S.fc?.getActiveObject();
+    const cur=isTextObj(obj)?obj.fontFamily:'Plus Jakarta Sans';
+    document.querySelectorAll('.tb-font-item').forEach(el=>{
+      el.classList.toggle('active',el.dataset.font===cur);
+      if(el.dataset.font===cur)el.scrollIntoView({block:'nearest'});
+    });
+    setTimeout(()=>document.addEventListener('click',closeFontPicker,{once:true}),10);
+  }
+}
+function closeFontPicker(){document.getElementById('tb-font-dropdown')?.classList.remove('open');}
+function filterFonts(q){
+  const lq=q.toLowerCase();
+  document.querySelectorAll('.tb-font-item').forEach(el=>{
+    el.style.display=!lq||el.dataset.font.toLowerCase().includes(lq)?'':'none';
+  });
+}
+function setFontPickerValue(f){
+  const d=document.getElementById('tb-font-display');
+  if(d){d.textContent=f;d.style.fontFamily=`'${f}',sans-serif`;}
+}
+
+// ===================== TEXT ALIGNMENT =====================
+function applyTextAlign(a){
+  const o=S.fc?.getActiveObject();if(!isTextObj(o))return;
+  o.set('textAlign',a);S.fc.renderAll();updateToolbar();updatePropsPanel();pushHistory();
+}
+
+// ===================== SHADOW =====================
+function applyShadow(){
+  const obj=S.fc?.getActiveObject();if(!obj?.shadow)return;
+  const color=document.getElementById('pp-shadow-color')?.value||'#000000';
+  const blur=parseInt(document.getElementById('pp-shadow-blur')?.value)||10;
+  const ox=parseInt(document.getElementById('pp-shadow-ox')?.value)||5;
+  const oy=parseInt(document.getElementById('pp-shadow-oy')?.value)||5;
+  obj.set('shadow',new fabric.Shadow({color,blur,offsetX:ox,offsetY:oy}));
+  S.fc.renderAll();
+}
+
 // ===================== TOOLBAR SYNC =====================
 function updateToolbar(){
   const obj=S.fc?.getActiveObject();
@@ -1451,8 +1527,9 @@ function updateToolbar(){
   document.getElementById('tb-bold')?.classList.toggle('active',isText&&obj.fontWeight==='bold');
   document.getElementById('tb-italic')?.classList.toggle('active',isText&&obj.fontStyle==='italic');
   document.getElementById('tb-underline')?.classList.toggle('active',isText&&!!obj.underline);
-  const fnt=document.getElementById('tb-font');
-  if(fnt&&isText)fnt.value=obj.fontFamily||'Plus Jakarta Sans';
+  const alignMap={l:'left',c:'center',r:'right',j:'justify'};
+  Object.entries(alignMap).forEach(([k,a])=>document.getElementById('tb-ta'+k)?.classList.toggle('active',isText&&obj.textAlign===a));
+  if(isText)setFontPickerValue(obj.fontFamily||'Plus Jakarta Sans');
   const fsz=document.getElementById('tb-size');
   if(fsz&&isText)fsz.value=obj.fontSize||24;
   if(obj)updateSwatches(obj);
@@ -1489,10 +1566,13 @@ function updatePropsPanel(){
     <div class="pp-section">
       <div class="pp-section-title">Text</div>
       <div class="pp-row"><div class="pp-label">Font</div>
-        <select class="pp-sel" data-prop="fontFamily">
-          ${FONTS.map(f=>`<option value="${f}"${obj.fontFamily===f?' selected':''}>${f}</option>`).join('')}
+        <select class="pp-sel" data-prop="fontFamily" id="pp-font-sel" style="font-family:'${obj.fontFamily||'Plus Jakarta Sans'}',sans-serif">
+          ${FONTS.map(f=>`<option value="${f}"${obj.fontFamily===f?' selected':''} style="font-family:'${f}'">${f}</option>`).join('')}
         </select></div>
-      <div class="pp-row"><div class="pp-label">Size</div><input class="pp-input" type="number" data-prop="fontSize" value="${obj.fontSize||24}" min="1" max="400"></div>
+      <div class="pp-row">
+        <div class="pp-label">Size</div><input class="pp-input" type="number" data-prop="fontSize" value="${obj.fontSize||24}" min="1" max="400" style="width:52px;flex:none">
+        <div class="pp-label" style="width:auto;flex-shrink:0;margin-left:4px">Spacing</div><input class="pp-input" type="number" data-prop="charSpacing" value="${obj.charSpacing||0}" min="-200" max="1000" step="10" title="Letter spacing (1/1000 em)">
+      </div>
       <div class="pp-grid4">
         <button class="pp-icon-btn${obj.fontWeight==='bold'?' active':''}" data-prop="bold" style="font-weight:700">B</button>
         <button class="pp-icon-btn${obj.fontStyle==='italic'?' active':''}" data-prop="italic" style="font-style:italic">I</button>
@@ -1523,10 +1603,31 @@ function updatePropsPanel(){
     <div class="pp-divider"></div>`;
   }
 
+  const shadow=obj.shadow;const hasShadow=!!shadow;
+  const shadowColor=hasShadow?toHex(shadow.color||'#000000'):'#000000';
+  const shadowBlur=hasShadow?(shadow.blur||10):10;
+  const shadowOX=hasShadow?(shadow.offsetX||5):5;
+  const shadowOY=hasShadow?(shadow.offsetY||5):5;
   html+=`
     <div class="pp-section">
       <div class="pp-section-title">Appearance</div>
       <div class="pp-row"><div class="pp-label">Opacity</div><input class="pp-input" type="range" data-prop="opacity" value="${Math.round((obj.opacity||1)*100)}" min="0" max="100" style="flex:1;height:auto;border:none;padding:0"><span id="pp-opacity-lbl" style="font-size:11px;color:var(--text3);width:32px;text-align:right;flex-shrink:0">${Math.round((obj.opacity||1)*100)}%</span></div>
+    </div>
+    <div class="pp-divider"></div>
+    <div class="pp-section">
+      <div class="pp-section-title">Shadow</div>
+      <div class="pp-row" style="gap:10px">
+        <div class="pp-label">Enable</div>
+        <input type="checkbox" id="pp-shadow-en" ${hasShadow?'checked':''} style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">
+      </div>
+      <div id="pp-shadow-ctrls" style="${hasShadow?'':'display:none'}">
+        <div class="pp-row"><div class="pp-label">Color</div><input class="pp-input" type="color" id="pp-shadow-color" value="${shadowColor}"></div>
+        <div class="pp-row"><div class="pp-label">Blur</div><input class="pp-input" type="range" id="pp-shadow-blur" min="0" max="80" value="${shadowBlur}" style="border:none;padding:0"><span style="font-size:11px;color:var(--text3);width:28px;text-align:right;flex-shrink:0" id="pp-shadow-blur-lbl">${shadowBlur}</span></div>
+        <div class="pp-grid2">
+          <div class="pp-half"><label>Offset X</label><input type="number" id="pp-shadow-ox" min="-100" max="100" value="${shadowOX}"></div>
+          <div class="pp-half"><label>Offset Y</label><input type="number" id="pp-shadow-oy" min="-100" max="100" value="${shadowOY}"></div>
+        </div>
+      </div>
     </div>
     <div class="pp-divider"></div>
     <div class="pp-section">
@@ -1557,6 +1658,34 @@ function updatePropsPanel(){
   body.querySelectorAll('button[data-prop]').forEach(el=>{
     el.addEventListener('click',e=>handlePropBtn(e));
   });
+
+  // Sync font select's own display font on change
+  const ppFontSel=document.getElementById('pp-font-sel');
+  if(ppFontSel)ppFontSel.addEventListener('change',e=>{e.currentTarget.style.fontFamily=`'${e.currentTarget.value}',sans-serif`;});
+
+  // Shadow controls
+  document.getElementById('pp-shadow-en')?.addEventListener('change',e=>{
+    const o=S.fc?.getActiveObject();if(!o)return;
+    const ctrls=document.getElementById('pp-shadow-ctrls');
+    if(e.target.checked){
+      o.set('shadow',new fabric.Shadow({color:'#000000',blur:10,offsetX:5,offsetY:5}));
+      if(ctrls)ctrls.style.display='';
+    }else{
+      o.set('shadow',null);
+      if(ctrls)ctrls.style.display='none';
+    }
+    S.fc.renderAll();pushHistory();
+  });
+  document.getElementById('pp-shadow-blur')?.addEventListener('input',e=>{
+    const lbl=document.getElementById('pp-shadow-blur-lbl');if(lbl)lbl.textContent=e.target.value;
+    applyShadow();
+  });
+  ['pp-shadow-color','pp-shadow-ox','pp-shadow-oy'].forEach(id=>
+    document.getElementById(id)?.addEventListener('input',applyShadow)
+  );
+  ['pp-shadow-color','pp-shadow-ox','pp-shadow-oy'].forEach(id=>
+    document.getElementById(id)?.addEventListener('change',()=>pushHistory())
+  );
 }
 
 function handlePropInput(e){
@@ -1581,9 +1710,10 @@ function handlePropChange(e){
   else if(prop==='w'){const br=obj.getBoundingRect(true);obj.scaleToWidth(parseFloat(val));}
   else if(prop==='h'){const br=obj.getBoundingRect(true);obj.scaleToHeight(parseFloat(val));}
   else if(prop==='angle')obj.set('angle',parseFloat(val));
-  else if(prop==='fontFamily')obj.set('fontFamily',val);
+  else if(prop==='fontFamily'){obj.set('fontFamily',val);setFontPickerValue(val);}
   else if(prop==='fontSize')obj.set('fontSize',parseInt(val));
   else if(prop==='lineHeight')obj.set('lineHeight',parseFloat(val));
+  else if(prop==='charSpacing')obj.set('charSpacing',parseInt(val));
   else if(prop==='strokeWidth')obj.set('strokeWidth',parseInt(val));
   obj.setCoords();S.fc.renderAll();pushHistory();
 }

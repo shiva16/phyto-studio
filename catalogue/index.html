@@ -270,7 +270,9 @@ function formatDate(d) {
 
 function isVisible(p) {
   if (p.status !== 'published') return false;
-  if (p.expires && new Date(p.expires) < new Date()) return false;
+  const now = new Date();
+  if (p.expires && new Date(p.expires) < now) return false;
+  if (p.visible_from && new Date(p.visible_from) > now) return false;
   return true;
 }
 
