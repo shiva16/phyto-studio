@@ -688,6 +688,7 @@ async function ptRun(cmd) {
       case '/todos':    await ptAskClaude('Find all TODO/FIXME/HACK comments in the repo'); break;
       case '/audit':    await ptAskClaude('Security and quality audit the repo. List issues by severity.'); break;
       case '/readme':   await ptAskClaude('Generate or update the README.md for this repo'); break;
+      case 'plan': case '/plan': await ptCmdPlan(rest); break;
       case 'whoami':    ptL((PT.ghUser||'?')+'  '+C.gray+PT.ptOwner+' 🔒'+C.r); break;
       case 'clear': case 'cls': PT.term.clear(); break;
       case 'reset':     PT.messages=[]; ptL(C.green+'Context cleared.'+C.r); break;
@@ -698,6 +699,32 @@ async function ptRun(cmd) {
   } catch(e) { ptL(C.red+'Error: '+e.message+C.r); }
   PT.busy=false; ptUpdateStatus('ready');
   ptPrompt();
+}
+
+// ── Planning ──────────────────────────────────────────────────────────────
+async function ptCmdPlan(task) {
+  if(!task){ ptL(C.gray+'Usage: plan <what you want to build>'+C.r); return; }
+  const prevModel=PT.model;
+  // Use quality/coder for planning — pick best available
+  const planModel=PT.nimKey?'coder':(PT.model==='fast'?'quality':PT.model);
+  if(planModel!==PT.model){
+    ptL(C.gray+'  (switching to '+PT_MODEL_LBL[planModel]+' for planning)'+C.r);
+    PT.model=planModel;
+  }
+  ptL(C.cyan+'┌─ Planning: '+C.b+task+C.r);
+  const prompt=
+    'You are planning a software task for this repo. Think step by step.\n'+
+    'Task: '+task+'\n\n'+
+    'Produce a numbered implementation plan:\n'+
+    '1. What to read/understand first\n'+
+    '2. What files to create or modify (exact paths)\n'+
+    '3. Step-by-step implementation order\n'+
+    '4. What to test/verify\n\n'+
+    'Be specific about file paths and what changes. No code yet — plan only.\n'+
+    'End with: READY — tell me "go" to start, or adjust the plan.';
+  await ptAskClaude(prompt);
+  ptL(C.cyan+'└──'+C.r);
+  if(planModel!==prevModel) PT.model=prevModel;
 }
 
 // ── Commands ──────────────────────────────────────────────────────────────
@@ -952,13 +979,14 @@ function ptShowModelPicker(model, el) {
   if(!info){ ptSetModel(model); return; }
 
   const nimModels=['deepseek','qwen','coder'];
-  const needsKey = nimModels.includes(model) && !PT.nimKey;
+  const isNim = nimModels.includes(model);
+  const hasKey = isNim && !!PT.nimKey;
   const isCurrent = PT.model===model;
 
   const popup = document.createElement('div');
   popup.id='pt-model-popup';
   popup.dataset.model=model;
-  const label={coder:'Qwen3 Coder',qwen:'Qwen 3.5',deepseek:'DeepSeek V3',quality:'Quality 70B',fast:'Fast 8B'}[model]||model;
+  const label={coder:'Qwen3 Coder',qwen:'Qwen 3.5',deepseek:'DeepSeek V4 Pro',quality:'Quality 70B',fast:'Fast 8B'}[model]||model;
   popup.innerHTML=`
     <div class="pt-popup-hdr">
       <div class="pt-popup-badge ${info.badgeClass}">${info.badge}</div>
@@ -973,14 +1001,17 @@ function ptShowModelPicker(model, el) {
       <div class="pt-popup-section">Good for</div>
       <ul class="pt-popup-list">${info.good.map(g=>`<li>${g}</li>`).join('')}</ul>
       <div class="pt-popup-avoid"><strong style="color:#8b949e">Skip when:</strong> ${info.avoid}</div>
-      ${needsKey?`
-        <div class="pt-popup-key-lbl">NVIDIA NIM API Key</div>
+      ${isNim?`
+        <div class="pt-popup-key-lbl">NVIDIA NIM API Key ${hasKey?'<span style="color:#3fb950;font-weight:400">✓ set</span>':''}</div>
         <div class="pt-popup-key-row">
-          <input class="pt-popup-key-inp" id="pt-nim-key-inp" type="password" placeholder="nvapi-…" autocomplete="off" spellcheck="false">
-          <button class="pt-popup-key-save" onclick="ptSaveNimKey('${model}')">Save &amp; Use</button>
+          <input class="pt-popup-key-inp" id="pt-nim-key-inp" type="password" placeholder="${hasKey?'re-enter to update key':'nvapi-…'}" autocomplete="off" spellcheck="false">
+          <button class="pt-popup-key-save" onclick="ptSaveNimKey('${model}')">${hasKey?'Update':'Save &amp; Use'}</button>
         </div>
         <div class="pt-popup-key-hint">Get free key → <a href="https://build.nvidia.com" target="_blank">build.nvidia.com</a></div>
-        <div class="pt-popup-btns"><button class="pt-popup-cancel" onclick="ptCloseModelPopup()">Cancel</button></div>
+        <div class="pt-popup-btns">
+          ${hasKey?`<button class="pt-popup-use" onclick="ptSelectModel('${model}')">${isCurrent?'✓ Active':'Use this model'}</button>`:''}
+          <button class="pt-popup-cancel" onclick="ptCloseModelPopup()">Cancel</button>
+        </div>
       `:`
         <div class="pt-popup-btns">
           <button class="pt-popup-use" onclick="ptSelectModel('${model}')">${isCurrent?'✓ Active':'Use this model'}</button>
@@ -1098,7 +1129,7 @@ function ptHelp() {
     ['File ops',    [['create <file>','Create file'],['rm <file>','Delete file'],['mv <src> <dst>','Move/rename'],['cp <src> <dst>','Copy'],['diff <file>','Diff vs previous commit']]],
     ['Repo & Git',  [['repos','All repos'],['repo <name>','Switch repo'],['branches','List branches'],['branch <name>','Switch branch'],['log [n]','Last n commits'],['status','Repo info + HEAD'],['issues [n]','Open issues'],['prs','Open pull requests'],['pr "title"','Create pull request'],['new-repo <n>','Create repo (--private)']]],
     ['Sessions',    [['sessions','List encrypted session logs'],['tokens','Token usage + cost estimate'],['open <url>','Open in browser'],['whoami','User + encrypted store'],['reset','Clear AI context'],['clear','Clear screen'],['exit','Save session + sign out']]],
-    ['AI',          [['/model fast|quality|nim','Switch AI model (Groq/NIM)'],['<anything>','Ask AI (multi-step agentic)'],['/review <file>','Code review'],['/explain <file>','Explain file'],['/improve <file>','Rewrite & improve'],['/summarize [n]','Summarize commits'],['/todos','Find TODOs in repo'],['/audit','Security audit'],['/readme','Generate README'],['/model','Show model + rate limits']]],
+    ['AI',          [['plan <task>','Plan before coding — numbered steps, best model auto-selected'],['<anything>','Ask AI (multi-step agentic)'],['/review <file>','Code review'],['/explain <file>','Explain file'],['/improve <file>','Rewrite & improve'],['/summarize [n]','Summarize commits'],['/todos','Find TODOs in repo'],['/audit','Security audit'],['/readme','Generate README'],['/model','Show model + rate limits']]],
     ['Config',      [['config','Show all settings'],['config worker <url>','Set Groq CF Worker URL'],['config nim <key>','Set NVIDIA NIM API key (encrypted)'],['config nim-model <name>','Set NIM model name']]],
   ];
   ptL('');
@@ -1190,10 +1221,14 @@ async function ptAskClaude(userInput) {
   try {
     for(let hop=0;hop<5;hop++){
       if(!PT.busy){stopThink();return;}
+      const maxHist={fast:6,quality:20}[PT.model]||PT.messages.length;
+      const hist=PT.messages.slice(-maxHist).map(m=>
+        m.content.length>2000?{...m,content:m.content.slice(0,2000)+'…(truncated)'}:m
+      );
       const msgs=[
         {role:'user',content:PT_SYS+'\n\nContext: repo='+PT.repo+', branch='+PT.branch+', path=/'+(PT.path||'')+', user='+(PT.ghUser||'')},
         {role:'assistant',content:'PhytoTerm ready. Connected to '+PT.repo+' ('+PT.branch+').'},
-        ...PT.messages,
+        ...hist,
       ];
       const result=await ptCallAI(msgs);
       // Track tokens — Groq/NIM both use OpenAI format

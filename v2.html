@@ -3656,6 +3656,7 @@ async function ptRun(cmd){
       case '/todos':    await ptAskClaude('Find all TODO/FIXME/HACK/HACK comments in the repo and list them with file paths'); break;
       case '/audit':    await ptAskClaude('Security and quality audit the repo. List issues by severity.'); break;
       case '/readme':   await ptAskClaude('Generate or update the README.md for this repo based on the code'); break;
+      case 'plan': case '/plan': await ptCmdPlan(rest); break;
       /* Util */
       case 'whoami':    ptL((PT.ghUser||'unknown')+(PT.ptOwner?' ('+PT.ptOwner+' 🔒)':'')); break;
       case 'clear': case 'cls': PT.term.clear(); break;
@@ -4053,7 +4054,7 @@ function ptHelp(){
     ['File ops',    [['create <file>','Create empty file'],['rm <file>','Delete file'],['mv <src> <dst>','Rename/move file'],['cp <src> <dst>','Copy file'],['diff <file>','Show changes vs prev commit']]],
     ['Repo & Git',  [['repos','All your repos'],['repo <name>','Switch repo'],['branches','List branches'],['branch <name>','Switch branch'],['log [n]','Last n commits'],['status','Repo status + HEAD'],['issues [n]','Open issues'],['prs','Open pull requests'],['pr "title"','Create pull request'],['new-repo <n>','Create new repo (add --private)']]],
     ['Sessions',    [['sessions','List saved session logs'],['open <url>','Open URL in browser'],['whoami','GitHub user + private repo'],['reset','Clear AI context'],['clear','Clear terminal'],['exit','Save session + close']]],
-    ['AI',          [['/model sonnet|deepseek|nano','Switch AI model'],['<anything>','Ask Claude (AI, multi-step)'],['/review <file>','Code review a file'],['/explain <file>','Explain a file'],['/improve <file>','Rewrite & improve a file'],['/summarize [n]','Summarize recent commits'],['/todos','Find all TODOs in repo'],['/audit','Security & quality audit'],['/readme','Generate/update README']]],
+    ['AI',          [['plan <task>','Plan before coding — uses best model, numbered steps'],['<anything>','Ask AI (multi-step agentic loop)'],['/review <file>','Code review a file'],['/explain <file>','Explain a file'],['/improve <file>','Rewrite & improve a file'],['/summarize [n]','Summarize recent commits'],['/todos','Find all TODOs in repo'],['/audit','Security & quality audit'],['/readme','Generate/update README']]],
   ];
   ptL('');
   ptL(C.b+C.white+'PhytoTerm'+C.r+'  '+C.gray+(PT.ptOwner||'')+'  🔒 encrypted  ·  model: '+C.cyan+PT.model+C.r);
@@ -4094,6 +4095,31 @@ function ptUpdateTokenBar(){
   if(el)el.textContent=cost>0.001?'~$'+cost.toFixed(4):'';
 }
 
+// ── Planning ──────────────────────────────────────────────────────────────
+async function ptCmdPlan(task){
+  if(!task){ptL(C.gray+'Usage: plan <what you want to build>'+C.r);return;}
+  const prevModel=PT.model;
+  const planModel=PT.nimKey?'coder':(PT.model==='fast'?'quality':PT.model);
+  if(planModel!==PT.model){
+    ptL(C.gray+'  (switching to '+PT_MODEL_LBL[planModel]+' for planning)'+C.r);
+    PT.model=planModel;
+  }
+  ptL(C.cyan+'┌─ Planning: '+C.b+task+C.r);
+  const prompt=
+    'You are planning a software task for this repo. Think step by step.\n'+
+    'Task: '+task+'\n\n'+
+    'Produce a numbered implementation plan:\n'+
+    '1. What to read/understand first\n'+
+    '2. What files to create or modify (exact paths)\n'+
+    '3. Step-by-step implementation order\n'+
+    '4. What to test/verify\n\n'+
+    'Be specific about file paths and what changes. No code yet — plan only.\n'+
+    'End with: READY — tell me "go" to start, or adjust the plan.';
+  await ptAskClaude(prompt);
+  ptL(C.cyan+'└──'+C.r);
+  if(planModel!==prevModel) PT.model=prevModel;
+}
+
 function ptCmdTokens(){
   const {input,output,calls}=PT.usage;
   ptL('');ptL(C.b+C.white+'Token usage — this session'+C.r);ptL(C.gray+'─'.repeat(40)+C.r);
@@ -4119,12 +4145,13 @@ function ptShowModelPicker(model,el){
   if(existing){existing.remove();if(_popupClose){document.removeEventListener('click',_popupClose);_popupClose=null;}if(existing.dataset.model===model)return;}
   const info=MODEL_INFO[model];if(!info){ptSetModel(model);return;}
   const nimModels=['deepseek','qwen','coder'];
-  const needsKey=nimModels.includes(model)&&!PT.nimKey;
+  const isNim=nimModels.includes(model);
+  const hasKey=isNim&&!!PT.nimKey;
   const isCurrent=PT.model===model;
   const popup=document.createElement('div');
   popup.id='pt-model-popup';popup.dataset.model=model;
-  const label={coder:'Qwen3 Coder',qwen:'Qwen 3.5',deepseek:'DeepSeek V3',quality:'Quality 70B',fast:'Fast 8B'}[model]||model;
-  popup.innerHTML=`<div class="pt-popup-hdr"><div class="pt-popup-badge ${info.badgeClass}">${info.badge}</div><div class="pt-popup-name">${label}</div><div class="pt-popup-meta"><span style="font-family:monospace;font-size:10px;color:#8b949e">${info.name}</span></div><div class="pt-popup-meta"><span>📐 ${info.ctx}</span><span>⚡ ${info.limit}</span>${info.swe?`<span class="swe">SWE ${info.swe}</span>`:''}</div></div><div class="pt-popup-body"><div class="pt-popup-section">Good for</div><ul class="pt-popup-list">${info.good.map(g=>`<li>${g}</li>`).join('')}</ul><div class="pt-popup-avoid"><strong style="color:#8b949e">Skip when:</strong> ${info.avoid}</div>${needsKey?`<div class="pt-popup-key-lbl">NVIDIA NIM API Key</div><div class="pt-popup-key-row"><input class="pt-popup-key-inp" id="pt-nim-key-inp" type="password" placeholder="nvapi-…" autocomplete="off" spellcheck="false"><button class="pt-popup-key-save" onclick="ptSaveNimKey('${model}')">Save &amp; Use</button></div><div class="pt-popup-key-hint">Get free key → <a href="https://build.nvidia.com" target="_blank">build.nvidia.com</a></div><div class="pt-popup-btns"><button class="pt-popup-cancel" onclick="ptCloseModelPopup()">Cancel</button></div>`:`<div class="pt-popup-btns"><button class="pt-popup-use" onclick="ptSelectModel('${model}')">${isCurrent?'✓ Active':'Use this model'}</button><button class="pt-popup-cancel" onclick="ptCloseModelPopup()">Cancel</button></div>`}</div>`;
+  const label={coder:'Qwen3 Coder',qwen:'Qwen 3.5',deepseek:'DeepSeek V4 Pro',quality:'Quality 70B',fast:'Fast 8B'}[model]||model;
+  popup.innerHTML=`<div class="pt-popup-hdr"><div class="pt-popup-badge ${info.badgeClass}">${info.badge}</div><div class="pt-popup-name">${label}</div><div class="pt-popup-meta"><span style="font-family:monospace;font-size:10px;color:#8b949e">${info.name}</span></div><div class="pt-popup-meta"><span>📐 ${info.ctx}</span><span>⚡ ${info.limit}</span>${info.swe?`<span class="swe">SWE ${info.swe}</span>`:''}</div></div><div class="pt-popup-body"><div class="pt-popup-section">Good for</div><ul class="pt-popup-list">${info.good.map(g=>`<li>${g}</li>`).join('')}</ul><div class="pt-popup-avoid"><strong style="color:#8b949e">Skip when:</strong> ${info.avoid}</div>${isNim?`<div class="pt-popup-key-lbl">NVIDIA NIM API Key ${hasKey?'<span style="color:#3fb950;font-weight:400">✓ set</span>':''}</div><div class="pt-popup-key-row"><input class="pt-popup-key-inp" id="pt-nim-key-inp" type="password" placeholder="${hasKey?'re-enter to update key':'nvapi-…'}" autocomplete="off" spellcheck="false"><button class="pt-popup-key-save" onclick="ptSaveNimKey('${model}')">${hasKey?'Update':'Save &amp; Use'}</button></div><div class="pt-popup-key-hint">Get free key → <a href="https://build.nvidia.com" target="_blank">build.nvidia.com</a></div><div class="pt-popup-btns">${hasKey?`<button class="pt-popup-use" onclick="ptSelectModel('${model}')">${isCurrent?'✓ Active':'Use this model'}</button>`:''}<button class="pt-popup-cancel" onclick="ptCloseModelPopup()">Cancel</button></div>`:`<div class="pt-popup-btns"><button class="pt-popup-use" onclick="ptSelectModel('${model}')">${isCurrent?'✓ Active':'Use this model'}</button><button class="pt-popup-cancel" onclick="ptCloseModelPopup()">Cancel</button></div>`}</div>`;
   const rect=el.getBoundingClientRect();const left=Math.min(rect.left,window.innerWidth-300);
   popup.style.cssText=`position:fixed;top:${rect.bottom+6}px;left:${left}px;`;
   document.body.appendChild(popup);
@@ -4331,10 +4358,14 @@ async function ptAskClaude(userInput){
   try{
     for(let hop=0;hop<5;hop++){
       if(!PT.busy){stopThink();return;}
+      const maxHist={fast:6,quality:20}[PT.model]||PT.messages.length;
+      const hist=PT.messages.slice(-maxHist).map(m=>
+        m.content.length>2000?{...m,content:m.content.slice(0,2000)+'…(truncated)'}:m
+      );
       const msgs=[
         {role:'user',content:PT_SYS+'\n\nContext: repo='+PT.repo+', branch='+PT.branch+', path=/'+(PT.path||'')+', user='+(PT.ghUser||GH_OWNER)},
         {role:'assistant',content:'PhytoTerm ready. Connected to '+PT.repo+' ('+PT.branch+').'},
-        ...PT.messages,
+        ...hist,
       ];
       const result=await ptCallAI(msgs);
       const u=result.usage||{};
