@@ -14,19 +14,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy worker code
+      - name: Deploy worker
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.studio_cf }}
           workingDirectory: worker
-
-      - name: Push GROQ_API_KEY secret
-        continue-on-error: true
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.studio_cf }}
-          workingDirectory: worker
-          secrets: |
-            GROQ_API_KEY
-        env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
