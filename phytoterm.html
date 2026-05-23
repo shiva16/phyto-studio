@@ -124,9 +124,10 @@ html,body{height:100%;background:#0d1117;color:#e6edf3;font-family:'Cascadia Cod
       <option>main</option>
     </select>
     <div class="pt-model-pills">
-      <button class="pt-mpill active" data-model="fast" onclick="ptSetModel('fast')" title="Groq llama-3.1-8b-instant">Fast</button>
-      <button class="pt-mpill" data-model="quality" onclick="ptSetModel('quality')" title="Groq llama-3.3-70b-versatile">Quality</button>
-      <button class="pt-mpill" data-model="nim" onclick="ptSetModel('nim')" title="NVIDIA NIM — set key with: config nim &lt;key&gt;">NIM</button>
+      <button class="pt-mpill active" data-model="fast" onclick="ptSetModel('fast')" title="Groq · llama-3.1-8b-instant · ~unlimited">Fast</button>
+      <button class="pt-mpill" data-model="quality" onclick="ptSetModel('quality')" title="Groq · llama-3.3-70b-versatile · 1k req/day">Quality</button>
+      <button class="pt-mpill" data-model="deepseek" onclick="ptSetModel('deepseek')" title="NVIDIA NIM · deepseek-ai/deepseek-v3 · 40 RPM free">DeepSeek</button>
+      <button class="pt-mpill" data-model="qwen" onclick="ptSetModel('qwen')" title="NVIDIA NIM · qwen/qwen3-235b-a22b · 40 RPM free · 262K ctx">Qwen 3.5</button>
     </div>
     <div id="pt-token-bar" style="display:none;align-items:center;gap:5px;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:3px 9px;font-size:11px;font-family:system-ui,sans-serif;white-space:nowrap;flex-shrink:0" title="Token usage this session">
       <span style="color:#3fb950">↑</span><span id="pt-tok-in" style="color:#c9d1d9">0</span>
@@ -284,7 +285,8 @@ function ptUpdateTokenBar(){
   const rates={
     fast:{in:0.05,out:0.08},
     quality:{in:0.59,out:0.79},
-    nim:{in:0.20,out:0.20},
+    deepseek:{in:0.14,out:0.28},
+    qwen:{in:0.20,out:0.60},
   };
   const r=rates[PT.model]||{in:0.05,out:0.08};
   const cost=((PT.usage.input/1e6)*r.in+(PT.usage.output/1e6)*r.out);
@@ -765,33 +767,43 @@ function ptCmdTokens() {
   ptL('  '+C.gray+'Output:      '+C.r+C.blue+output.toLocaleString()+C.r+' tokens');
   ptL('  '+C.gray+'Total:       '+C.r+C.white+total.toLocaleString()+C.r+' tokens');
   ptL('');
-  ptL(C.b+'Cost estimates:'+C.r);
-  const models={fast:{n:'Groq llama-3.1-8b',in:0.05,out:0.08},quality:{n:'Groq llama-3.3-70b',in:0.59,out:0.79},nim:{n:'NVIDIA NIM',in:0.20,out:0.20}};
+  ptL(C.b+'Cost estimates (if paid — NIM free tier = $0):'+C.r);
+  const models={
+    fast:    {n:'Groq llama-3.1-8b',   in:0.05, out:0.08,  limit:'~unlimited · 500k TPM'},
+    quality: {n:'Groq llama-3.3-70b',  in:0.59, out:0.79,  limit:'1,000 req/day · 6k TPM'},
+    deepseek:{n:'NIM deepseek-v3',      in:0.14, out:0.28,  limit:'40 RPM · no daily cap'},
+    qwen:    {n:'NIM qwen3-235b-a22b',  in:0.20, out:0.60,  limit:'40 RPM · 262K ctx'},
+  };
   Object.entries(models).forEach(([id,m])=>{
     const cost=((input/1e6)*m.in+(output/1e6)*m.out);
     const cur=id===PT.model;
-    ptL('  '+(cur?C.green+'→ '+C.r:'  ')+C.gray+m.n.padEnd(20)+C.r+'$'+cost.toFixed(5)+'  '+C.gray+'($'+m.in+'/M in · $'+m.out+'/M out)'+C.r);
+    ptL('  '+(cur?C.green+'→ '+C.r:'  ')+C.cyan+m.n.padEnd(22)+C.r+'$'+cost.toFixed(5)+'  '+C.gray+m.limit+C.r);
   });
   ptL('');
-  ptL(C.gray+'Groq rate limits: 14,400 req/day · 500k tok/min (8b) · 100k tok/min (70b)'+C.r);
-  ptL(C.gray+'NVIDIA NIM: 1,000 API calls free/month per account'+C.r);
-  ptL(C.gray+'Input token counts without API data are estimated (~4 chars/tok).'+C.r);
+  ptL(C.gray+'SWE-bench: Sonnet 79.6% · Qwen3 61.7% · DeepSeek V3 ~72% · Groq 70b ~60%'+C.r);
+  ptL(C.gray+'Input counts without API usage data are estimated (~4 chars/tok).'+C.r);
 }
 
 function ptSetModel(name) {
-  const a={f:'fast',q:'quality',70:'quality',8:'fast',nim:'nim',nvidia:'nim',fast:'fast',quality:'quality'};
+  const aliases={f:'fast',q:'quality','8':'fast','70':'quality',ds:'deepseek',v3:'deepseek',qwen3:'qwen','3.5':'qwen',fast:'fast',quality:'quality',deepseek:'deepseek',qwen:'qwen'};
   if(!name){
-    ptL('Current: '+C.cyan+PT.model+C.r);
-    ptL(C.gray+'  fast    → Groq llama-3.1-8b-instant'+C.r);
-    ptL(C.gray+'  quality → Groq llama-3.3-70b-versatile'+C.r);
-    ptL(C.gray+'  nim     → NVIDIA '+PT.nimModel+C.r+(PT.nimKey?'':C.yellow+'  (no key — run: config nim <key>)'+C.r));
+    const nimOk=PT.nimKey?C.green+'✓'+C.r:C.yellow+'no key'+C.r;
+    ptL(C.b+'Models:'+C.r);
+    ptL('  '+C.cyan+'fast     '+C.r+'Groq · llama-3.1-8b-instant   · ~unlimited');
+    ptL('  '+C.cyan+'quality  '+C.r+'Groq · llama-3.3-70b-versatile · 1,000 req/day');
+    ptL('  '+C.cyan+'deepseek '+C.r+'NIM  · deepseek-ai/deepseek-v3  · 40 RPM free  '+nimOk);
+    ptL('  '+C.cyan+'qwen     '+C.r+'NIM  · qwen/qwen3-235b-a22b     · 40 RPM free  '+nimOk+'  262K ctx');
+    ptL(C.gray+'  Current: '+C.white+PT.model+C.r);
+    if(!PT.nimKey) ptL(C.yellow+'  NIM key missing → config nim <nvapi-key>'+C.r);
     return;
   }
-  PT.model=a[name.toLowerCase()]||name;
+  PT.model=aliases[name.toLowerCase()]||name;
   document.querySelectorAll('.pt-mpill').forEach(b=>b.classList.toggle('active',b.dataset.model===PT.model));
   ptUpdateTokenBar();
-  ptL(C.green+'Model → '+C.cyan+PT.model+C.r);
-  if(PT.model==='nim'&&!PT.nimKey) ptL(C.yellow+'NVIDIA NIM key not set. Run: config nim <your_key>'+C.r);
+  const labels={fast:'Groq llama-3.1-8b',quality:'Groq llama-3.3-70b',deepseek:'NIM deepseek-ai/deepseek-v3',qwen:'NIM qwen/qwen3-235b-a22b'};
+  ptL(C.green+'Model → '+C.cyan+(labels[PT.model]||PT.model)+C.r);
+  if((PT.model==='deepseek'||PT.model==='qwen')&&!PT.nimKey)
+    ptL(C.yellow+'NIM key not set → run: config nim <nvapi-key>'+C.r);
 }
 
 async function ptCmdConfig(key,val) {
@@ -879,19 +891,25 @@ async function ptCallGroq(messages) {
   return r.json();
 }
 
+const NIM_MODEL_IDS = {
+  deepseek: 'deepseek-ai/deepseek-v3',
+  qwen:     'qwen/qwen3-235b-a22b',
+};
+
 async function ptCallNim(messages) {
   if(!PT.nimKey) throw new Error('NIM key not set — run: config nim <your-key>');
+  const modelId = NIM_MODEL_IDS[PT.model] || PT.nimModel;
   const r=await fetch(NIM_BASE,{
     method:'POST',
     headers:{Authorization:'Bearer '+PT.nimKey,'Content-Type':'application/json'},
-    body:JSON.stringify({model:PT.nimModel,messages,max_tokens:2048,temperature:0.7}),
+    body:JSON.stringify({model:modelId,messages,max_tokens:2048,temperature:0.7}),
   });
-  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error((e.detail||e.error)||'NIM '+r.status);}
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error((e.detail||e.error||e.message)||'NIM '+r.status);}
   return r.json();
 }
 
 async function ptCallAI(messages) {
-  if(PT.model==='nim') return ptCallNim(messages);
+  if(PT.model==='deepseek'||PT.model==='qwen') return ptCallNim(messages);
   return ptCallGroq(messages);
 }
 
