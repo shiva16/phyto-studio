@@ -37,13 +37,15 @@ export default {
 
     const url = new URL(request.url);
 
-    // Health check
     if (url.pathname === '/' || url.pathname === '/health') {
       return json({ status: 'ok', service: 'Phyto Studio AI' }, 200, cors);
     }
 
-    // AI generation endpoint
     if (url.pathname === '/generate' && request.method === 'POST') {
+      if (!env.GROQ_API_KEY) {
+        return json({ error: 'GROQ_API_KEY secret not configured on worker' }, 500, cors);
+      }
+
       try {
         const body = await request.json();
         const { messages, model = 'fast' } = body;
@@ -54,7 +56,7 @@ export default {
 
         const modelId = model === 'quality'
           ? 'llama-3.3-70b-versatile'
-          : 'llama-3.1-8b-instant';
+          : 'llama3-8b-8192';
 
         const groqRes = await fetch(GROQ_API_URL, {
           method: 'POST',
@@ -67,14 +69,28 @@ export default {
             messages,
             max_tokens: 2048,
             temperature: 0.7,
-            response_format: { type: 'json_object' },
           }),
         });
 
-        const data = await groqRes.json();
+        const rawText = await groqRes.text();
+
+        let data;
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          return json(
+            { error: `Groq returned non-JSON (status ${groqRes.status})`, raw: rawText.slice(0, 500) },
+            502,
+            cors,
+          );
+        }
 
         if (!groqRes.ok) {
-          return json({ error: data.error?.message || 'Groq error', details: data }, groqRes.status, cors);
+          return json(
+            { error: data.error?.message || 'Groq API error', code: groqRes.status, details: data },
+            groqRes.status,
+            cors,
+          );
         }
 
         return json(data, 200, cors);
