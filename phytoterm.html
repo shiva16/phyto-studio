@@ -70,8 +70,12 @@ html,body{height:100%;background:#0d1117;color:#e6edf3;font-family:'Cascadia Cod
   color:#8b949e;font-size:11px;cursor:pointer;transition:all .1s;
   font-family:system-ui,sans-serif;white-space:nowrap;
 }
-.pt-mpill.active{background:#388bfd22;color:#58a6ff}
+.pt-mpill.active{background:#388bfd22;color:#58a6ff;font-weight:600}
 .pt-mpill:hover:not(.active){background:#30363d;color:#c9d1d9}
+.pt-mpill.pt-minfo{padding:2px 7px;color:#6e7681;font-size:10px;border-left:1px solid #30363d;border-radius:0 4px 4px 0}
+.pt-mpill.pt-minfo:hover{color:#58a6ff;background:transparent}
+@keyframes tokFlash{0%{color:#58a6ff}100%{color:#c9d1d9}}
+.tok-flash{animation:tokFlash .5s ease-out}
 .pt-hdr-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
 .pt-user-lbl{font-size:11px;color:#6e7681;font-family:system-ui,sans-serif}
 .pt-signout-btn{
@@ -192,18 +196,19 @@ html,body{height:100%;background:#0d1117;color:#e6edf3;font-family:'Cascadia Cod
       <option>main</option>
     </select>
     <div class="pt-model-pills">
-      <button class="pt-mpill active" data-model="fast"     onclick="ptShowModelPicker('fast',this)">Fast</button>
-      <button class="pt-mpill"        data-model="quality"  onclick="ptShowModelPicker('quality',this)">Quality</button>
-      <button class="pt-mpill"        data-model="deepseek" onclick="ptShowModelPicker('deepseek',this)">DeepSeek</button>
-      <button class="pt-mpill"        data-model="qwen"     onclick="ptShowModelPicker('qwen',this)">Qwen 3.5</button>
-      <button class="pt-mpill"        data-model="coder"    onclick="ptShowModelPicker('coder',this)">Coder</button>
+      <button class="pt-mpill active" data-model="fast"     onclick="ptSetModel('fast')">Fast</button>
+      <button class="pt-mpill"        data-model="quality"  onclick="ptSetModel('quality')">Quality</button>
+      <button class="pt-mpill"        data-model="deepseek" onclick="ptSetModel('deepseek')">DeepSeek</button>
+      <button class="pt-mpill"        data-model="qwen"     onclick="ptSetModel('qwen')">Qwen 3.5</button>
+      <button class="pt-mpill"        data-model="coder"    onclick="ptSetModel('coder')">Coder</button>
+      <button class="pt-mpill pt-minfo" id="pt-minfo-btn"  onclick="ptShowModelPicker(PT.model,this)" title="Model info">ⓘ</button>
     </div>
-    <div id="pt-token-bar" style="display:none;align-items:center;gap:5px;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:3px 9px;font-size:11px;font-family:system-ui,sans-serif;white-space:nowrap;flex-shrink:0" title="Token usage this session">
-      <span style="color:#3fb950">↑</span><span id="pt-tok-in" style="color:#c9d1d9">0</span>
+    <div id="pt-token-bar" style="display:flex;align-items:center;gap:5px;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:3px 9px;font-size:11px;font-family:system-ui,sans-serif;white-space:nowrap;flex-shrink:0" title="Token usage this session">
+      <span style="color:#3fb950">↑</span><span id="pt-tok-in" style="color:#6e7681">—</span>
       <span style="color:#8b949e;margin:0 2px">·</span>
-      <span style="color:#58a6ff">↓</span><span id="pt-tok-out" style="color:#c9d1d9">0</span>
+      <span style="color:#58a6ff">↓</span><span id="pt-tok-out" style="color:#6e7681">—</span>
       <span style="color:#8b949e;margin:0 2px">·</span>
-      <span style="color:#e8c55e">Σ</span><span id="pt-tok-total" style="color:#c9d1d9">0</span>
+      <span style="color:#e8c55e">Σ</span><span id="pt-tok-total" style="color:#6e7681">—</span>
       <span style="color:#30363d;margin:0 5px">│</span>
       <span style="color:#8b949e">ctx</span>&nbsp;<span id="pt-tok-ctx" style="color:#c9d1d9">—</span>
       <span style="color:#6e7681;margin-left:4px" id="pt-tok-cost"></span>
@@ -354,24 +359,28 @@ function ptRestoreSessionState() {
 // ── Token display ─────────────────────────────────────────────────────────
 function ptFmtTok(n){return n>=1000?(n/1000).toFixed(1)+'k':String(n);}
 const PT_CTX_TOKENS={fast:131072,quality:131072,deepseek:65536,qwen:131072,coder:262144};
+const USD_TO_INR=84;
+function ptFlash(id){const el=document.getElementById(id);if(!el)return;el.classList.remove('tok-flash');void el.offsetWidth;el.classList.add('tok-flash');}
 function ptUpdateTokenBar(){
   const bar=document.getElementById('pt-token-bar');
   if(!bar)return;
-  if(PT.usage.calls===0){bar.style.display='none';return;}
-  bar.style.display='flex';
-  document.getElementById('pt-tok-in').textContent=ptFmtTok(PT.usage.input);
-  document.getElementById('pt-tok-out').textContent=ptFmtTok(PT.usage.output);
-  const total=PT.usage.input+PT.usage.output;
-  const totEl=document.getElementById('pt-tok-total');
-  if(totEl)totEl.textContent=ptFmtTok(total);
   const ctx=PT_CTX_TOKENS[PT.model];
   const ctxEl=document.getElementById('pt-tok-ctx');
   if(ctxEl)ctxEl.textContent=ctx?ptFmtTok(ctx):'—';
+  if(PT.usage.calls===0){
+    ['pt-tok-in','pt-tok-out','pt-tok-total'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent='—';el.style.color='#6e7681';}});
+    const costEl=document.getElementById('pt-tok-cost');if(costEl)costEl.textContent='';
+    return;
+  }
+  const set=(id,val)=>{const el=document.getElementById(id);if(!el)return;const prev=el.textContent;const next=ptFmtTok(val);if(prev!==next){el.textContent=next;el.style.color='#c9d1d9';ptFlash(id);}};
+  set('pt-tok-in',PT.usage.input);
+  set('pt-tok-out',PT.usage.output);
+  set('pt-tok-total',PT.usage.input+PT.usage.output);
   const rates={fast:{in:0.05,out:0.08},quality:{in:0.59,out:0.79},deepseek:{in:0.14,out:0.28},qwen:{in:0.20,out:0.60},coder:{in:0.22,out:0.66}};
   const r=rates[PT.model]||{in:0.05,out:0.08};
-  const cost=((PT.usage.input/1e6)*r.in+(PT.usage.output/1e6)*r.out);
-  const el=document.getElementById('pt-tok-cost');
-  if(el)el.textContent=cost>0.001?'~$'+cost.toFixed(4):'';
+  const inr=((PT.usage.input/1e6)*r.in+(PT.usage.output/1e6)*r.out)*USD_TO_INR;
+  const costEl=document.getElementById('pt-tok-cost');
+  if(costEl)costEl.textContent=inr>=0.01?'₹'+inr.toFixed(2):(inr>0?'₹'+inr.toFixed(4):'');
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
@@ -892,11 +901,11 @@ function ptCmdTokens() {
     qwen:    {n:'NIM qwen3.5-397b',          ctx:131072, in:0.20, out:0.60, limit:'40 RPM free'},
     coder:   {n:'NIM qwen3-coder-480b',      ctx:262144, in:0.22, out:0.66, limit:'40 RPM free'},
   };
-  ptL('  '+C.gray+'  model                ctx       cost (session)  rate'+C.r);
+  ptL('  '+C.gray+'  model                ctx       cost (₹)   rate'+C.r);
   Object.entries(models).forEach(([id,m])=>{
-    const cost=((input/1e6)*m.in+(output/1e6)*m.out);
+    const inr=((input/1e6)*m.in+(output/1e6)*m.out)*USD_TO_INR;
     const cur=id===PT.model;
-    ptL('  '+(cur?C.green+'→ '+C.r:'  ')+C.cyan+m.n.padEnd(22)+C.r+ptFmtTok(m.ctx).padStart(6)+'  $'+cost.toFixed(5)+'  '+C.gray+m.limit+C.r);
+    ptL('  '+(cur?C.green+'→ '+C.r:'  ')+C.cyan+m.n.padEnd(22)+C.r+ptFmtTok(m.ctx).padStart(6)+'  ₹'+inr.toFixed(4)+'  '+C.gray+m.limit+C.r);
   });
   ptL('');
   ptL(C.gray+'SWE-bench: Sonnet 79.6% · Coder 69.6% · DeepSeek V4 ~72% · Groq 70b ~60%'+C.r);
@@ -967,24 +976,16 @@ const MODEL_INFO = {
   },
 };
 
-let _popupClose = null;
+let _popupClose=null,_popupKey=null;
 
 function ptShowModelPicker(model, el) {
-  // If popup for same pill is open, close it (toggle)
   const existing = document.getElementById('pt-model-popup');
-  if(existing){
-    existing.remove();
-    if(_popupClose){document.removeEventListener('click',_popupClose);_popupClose=null;}
-    if(existing.dataset.model===model) return;
-  }
-
+  if(existing){ptCloseModelPopup();if(existing.dataset.model===model)return;}
   const info = MODEL_INFO[model];
-  if(!info){ ptSetModel(model); return; }
-
+  if(!info) return;
   const isCurrent = PT.model===model;
   const popup = document.createElement('div');
-  popup.id='pt-model-popup';
-  popup.dataset.model=model;
+  popup.id='pt-model-popup'; popup.dataset.model=model;
   const label={coder:'Qwen3 Coder',qwen:'Qwen 3.5',deepseek:'DeepSeek V4 Pro',quality:'Quality 70B',fast:'Fast 8B'}[model]||model;
   popup.innerHTML=`
     <div class="pt-popup-hdr">
@@ -1001,27 +1002,26 @@ function ptShowModelPicker(model, el) {
       <ul class="pt-popup-list">${info.good.map(g=>`<li>${g}</li>`).join('')}</ul>
       <div class="pt-popup-avoid"><strong style="color:#8b949e">Skip when:</strong> ${info.avoid}</div>
       <div class="pt-popup-btns">
-        <button class="pt-popup-use" onclick="ptSelectModel('${model}')">${isCurrent?'✓ Active':'Use this model'}</button>
-        <button class="pt-popup-cancel" onclick="ptCloseModelPopup()">Cancel</button>
+        <button class="pt-popup-use" id="pt-popup-use-btn">${isCurrent?'✓ Active — close':'Switch to '+label}</button>
+        <button class="pt-popup-cancel" onclick="ptCloseModelPopup()">Esc</button>
       </div>
+      <div style="font-size:10px;color:#6e7681;text-align:center;margin-top:6px">Press <kbd style="background:#21262d;border:1px solid #30363d;border-radius:3px;padding:1px 4px">Enter</kbd> to switch · <kbd style="background:#21262d;border:1px solid #30363d;border-radius:3px;padding:1px 4px">Esc</kbd> to close</div>
     </div>`;
-
-  // Position below the pill
-  const rect=el.getBoundingClientRect();
-  const left=Math.min(rect.left, window.innerWidth-300);
-  popup.style.cssText=`position:fixed;top:${rect.bottom+6}px;left:${left}px;`;
+  document.getElementById('pt-popup-use-btn').onclick=()=>ptSelectModel(model);
+  const anchor=el||document.getElementById('pt-minfo-btn');
+  const rect=anchor.getBoundingClientRect();
+  popup.style.cssText=`position:fixed;top:${rect.bottom+6}px;left:${Math.min(rect.left,window.innerWidth-300)}px;`;
   document.body.appendChild(popup);
-
-  _popupClose=(e)=>{
-    if(!popup.contains(e.target)&&e.target!==el){ptCloseModelPopup();}
-  };
-  setTimeout(()=>document.addEventListener('click',_popupClose),50);
+  _popupClose=e=>{if(!popup.contains(e.target)&&e.target!==anchor)ptCloseModelPopup();};
+  _popupKey=e=>{if(e.key==='Enter'){e.preventDefault();ptSelectModel(model);}if(e.key==='Escape')ptCloseModelPopup();};
+  setTimeout(()=>{document.addEventListener('click',_popupClose);document.addEventListener('keydown',_popupKey);},50);
 }
 
 function ptCloseModelPopup(){
-  const p=document.getElementById('pt-model-popup');
-  if(p)p.remove();
+  const p=document.getElementById('pt-model-popup');if(p)p.remove();
   if(_popupClose){document.removeEventListener('click',_popupClose);_popupClose=null;}
+  if(_popupKey){document.removeEventListener('keydown',_popupKey);_popupKey=null;}
+  PT.term?.focus();
 }
 
 function ptSelectModel(model){
