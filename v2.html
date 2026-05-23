@@ -434,6 +434,10 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-bottom:2px 
       <span style="color:#3fb950">↑</span><span id="pt-tok-in" style="color:#c9d1d9">0</span>
       <span style="color:#8b949e;margin:0 2px">·</span>
       <span style="color:#58a6ff">↓</span><span id="pt-tok-out" style="color:#c9d1d9">0</span>
+      <span style="color:#8b949e;margin:0 2px">·</span>
+      <span style="color:#e8c55e">Σ</span><span id="pt-tok-total" style="color:#c9d1d9">0</span>
+      <span style="color:#30363d;margin:0 5px">│</span>
+      <span style="color:#8b949e">ctx</span>&nbsp;<span id="pt-tok-ctx" style="color:#c9d1d9">—</span>
       <span style="color:#6e7681;margin-left:4px" id="pt-tok-cost"></span>
     </div>
     <div class="pt-hdr-right">
@@ -4081,6 +4085,7 @@ async function ptExit(){
 
 // ── Token bar ─────────────────────────────────────────────────────────────
 function ptFmtTok(n){return n>=1000?(n/1000).toFixed(1)+'k':String(n);}
+const PT_CTX_TOKENS={fast:131072,quality:131072,deepseek:65536,qwen:131072,coder:262144};
 function ptUpdateTokenBar(){
   const bar=document.getElementById('pt-token-bar');
   if(!bar)return;
@@ -4088,6 +4093,12 @@ function ptUpdateTokenBar(){
   bar.style.display='flex';
   document.getElementById('pt-tok-in').textContent=ptFmtTok(PT.usage.input);
   document.getElementById('pt-tok-out').textContent=ptFmtTok(PT.usage.output);
+  const total=PT.usage.input+PT.usage.output;
+  const totEl=document.getElementById('pt-tok-total');
+  if(totEl)totEl.textContent=ptFmtTok(total);
+  const ctx=PT_CTX_TOKENS[PT.model];
+  const ctxEl=document.getElementById('pt-tok-ctx');
+  if(ctxEl)ctxEl.textContent=ctx?ptFmtTok(ctx):'—';
   const rates={fast:{in:0.05,out:0.08},quality:{in:0.59,out:0.79},deepseek:{in:0.14,out:0.28},qwen:{in:0.20,out:0.60},coder:{in:0.22,out:0.66}};
   const r=rates[PT.model]||{in:0.05,out:0.08};
   const cost=((PT.usage.input/1e6)*r.in+(PT.usage.output/1e6)*r.out);
@@ -4122,18 +4133,33 @@ async function ptCmdPlan(task){
 
 function ptCmdTokens(){
   const {input,output,calls}=PT.usage;
-  ptL('');ptL(C.b+C.white+'Token usage — this session'+C.r);ptL(C.gray+'─'.repeat(40)+C.r);
-  ptL('  Calls: '+C.cyan+calls+C.r+'   Input: '+C.green+input.toLocaleString()+C.r+'   Output: '+C.blue+output.toLocaleString()+C.r);
-  ptL('');ptL(C.b+'Cost estimates (NIM free = $0):'+C.r);
-  const models={fast:{n:'Groq 8b',in:0.05,out:0.08,l:'~unlimited'},quality:{n:'Groq 70b',in:0.59,out:0.79,l:'1k/day'},deepseek:{n:'NIM deepseek-v4-pro',in:0.14,out:0.28,l:'40 RPM'},qwen:{n:'NIM qwen3.5-397b',in:0.20,out:0.60,l:'40 RPM'},coder:{n:'NIM qwen3-coder-480b',in:0.22,out:0.66,l:'40 RPM'}};
-  Object.entries(models).forEach(([id,m])=>{const cost=((input/1e6)*m.in+(output/1e6)*m.out);const cur=id===PT.model;ptL('  '+(cur?C.green+'→ '+C.r:'  ')+C.cyan+m.n.padEnd(22)+C.r+'$'+cost.toFixed(5)+'  '+C.gray+m.l+C.r);});
+  const total=input+output;
+  ptL('');ptL(C.b+C.white+'Token usage — this session'+C.r);ptL(C.gray+'─'.repeat(50)+C.r);
+  ptL('  Calls:  '+C.cyan+calls+C.r);
+  ptL('  Input:  '+C.green+input.toLocaleString()+C.r+' tokens');
+  ptL('  Output: '+C.blue+output.toLocaleString()+C.r+' tokens');
+  ptL('  Total:  '+C.white+total.toLocaleString()+C.r+' tokens (Σ this session)');
+  ptL('');ptL(C.b+'Model limits & estimated cost:'+C.r);
+  const models={
+    fast:    {n:'Groq llama-3.1-8b',        ctx:131072, in:0.05,out:0.08, limit:'~unlimited · 500k TPM'},
+    quality: {n:'Groq llama-3.3-70b',       ctx:131072, in:0.59,out:0.79, limit:'1,000 req/day · 6k TPM'},
+    deepseek:{n:'NIM deepseek-v4-pro',       ctx:65536,  in:0.14,out:0.28, limit:'40 RPM free'},
+    qwen:    {n:'NIM qwen3.5-397b',          ctx:131072, in:0.20,out:0.60, limit:'40 RPM free'},
+    coder:   {n:'NIM qwen3-coder-480b',      ctx:262144, in:0.22,out:0.66, limit:'40 RPM free'},
+  };
+  ptL('  '+C.gray+'  model                ctx       cost (session)  rate'+C.r);
+  Object.entries(models).forEach(([id,m])=>{
+    const cost=((input/1e6)*m.in+(output/1e6)*m.out);
+    const cur=id===PT.model;
+    ptL('  '+(cur?C.green+'→ '+C.r:'  ')+C.cyan+m.n.padEnd(22)+C.r+ptFmtTok(m.ctx).padStart(6)+'  $'+cost.toFixed(5)+'  '+C.gray+m.limit+C.r);
+  });
   ptL('');ptL(C.gray+'SWE-bench: Coder 69.6% · DeepSeek V4 ~72% · Qwen 3.5 61.7% · Groq 70b ~60%'+C.r);
 }
 
 // ── Model picker popup ─────────────────────────────────────────────────────
 const MODEL_INFO={
-  fast:{badge:'Groq',badgeClass:'groq',name:'llama-3.1-8b-instant',ctx:'32K',limit:'~unlimited',swe:null,good:['Instant answers while you build — no wait','Navigation: ls, cat, grep, log, status','Short explanations & quick lookups','Burning zero limit while staying in flow'],avoid:'Full feature builds or anything needing deep reasoning'},
-  quality:{badge:'Groq',badgeClass:'groq',name:'llama-3.3-70b-versatile',ctx:'32K',limit:'1,000 req/day',swe:'~60%',good:['Planning sessions & architecture discussions','Explaining what a module or pattern does','Moderate feature scaffolding','Fallback when NIM key not set'],avoid:'Long build sessions — 1k/day cap runs out fast with agentic loops'},
+  fast:{badge:'Groq',badgeClass:'groq',name:'llama-3.1-8b-instant',ctx:'128K',limit:'~unlimited',swe:null,good:['Instant answers while you build — no wait','Navigation: ls, cat, grep, log, status','Short explanations & quick lookups','Burning zero limit while staying in flow'],avoid:'Full feature builds or anything needing deep reasoning'},
+  quality:{badge:'Groq',badgeClass:'groq',name:'llama-3.3-70b-versatile',ctx:'128K',limit:'1,000 req/day',swe:'~60%',good:['Planning sessions & architecture discussions','Explaining what a module or pattern does','Moderate feature scaffolding','Fallback when NIM key not set'],avoid:'Long build sessions — 1k/day cap runs out fast with agentic loops'},
   deepseek:{badge:'NIM',badgeClass:'nim',name:'deepseek-ai/deepseek-v4-pro',ctx:'64K',limit:'40 RPM free',swe:'~72%',good:['Writing complete app files from scratch','JavaScript, HTML, CSS — deeply trained on web patterns','Building features like notes.tcplants or quant-onco modules','Best all-round free model for this kind of work'],avoid:'Files over ~50K tokens — switch to Qwen or Coder for those'},
   qwen:{badge:'NIM',badgeClass:'nim',name:'qwen/qwen3.5-397b-a17b',ctx:'131K',limit:'40 RPM free',swe:'61.7%',good:['Reading large codebases in one pass (131K ctx)','Strict instruction following — great for complex prompts','Refactoring across many interconnected files','When you need the model to hold a complex constraint throughout'],avoid:'Pure code generation — DeepSeek V4 or Coder edges it; use this for large context work'},
   coder:{badge:'NIM',badgeClass:'nim',name:'qwen/qwen3-coder-480b-a35b-instruct',ctx:'256K',limit:'40 RPM free',swe:'69.6%',good:['Agentic build loops — read → plan → write → verify chains','Trained on 7.5T tokens, 70% code — knows web app patterns cold','Best free model for the PhytoTerm <gh> action workflow','Building full single-file apps (tcplants pattern, phyto-studio style)'],avoid:'Nothing specific — purpose-built for exactly this kind of work'},

@@ -202,6 +202,10 @@ html,body{height:100%;background:#0d1117;color:#e6edf3;font-family:'Cascadia Cod
       <span style="color:#3fb950">↑</span><span id="pt-tok-in" style="color:#c9d1d9">0</span>
       <span style="color:#8b949e;margin:0 2px">·</span>
       <span style="color:#58a6ff">↓</span><span id="pt-tok-out" style="color:#c9d1d9">0</span>
+      <span style="color:#8b949e;margin:0 2px">·</span>
+      <span style="color:#e8c55e">Σ</span><span id="pt-tok-total" style="color:#c9d1d9">0</span>
+      <span style="color:#30363d;margin:0 5px">│</span>
+      <span style="color:#8b949e">ctx</span>&nbsp;<span id="pt-tok-ctx" style="color:#c9d1d9">—</span>
       <span style="color:#6e7681;margin-left:4px" id="pt-tok-cost"></span>
     </div>
     <div class="pt-hdr-right">
@@ -349,6 +353,7 @@ function ptRestoreSessionState() {
 
 // ── Token display ─────────────────────────────────────────────────────────
 function ptFmtTok(n){return n>=1000?(n/1000).toFixed(1)+'k':String(n);}
+const PT_CTX_TOKENS={fast:131072,quality:131072,deepseek:65536,qwen:131072,coder:262144};
 function ptUpdateTokenBar(){
   const bar=document.getElementById('pt-token-bar');
   if(!bar)return;
@@ -356,14 +361,13 @@ function ptUpdateTokenBar(){
   bar.style.display='flex';
   document.getElementById('pt-tok-in').textContent=ptFmtTok(PT.usage.input);
   document.getElementById('pt-tok-out').textContent=ptFmtTok(PT.usage.output);
-  // Rough cost estimate per model ($/M tokens)
-  const rates={
-    fast:{in:0.05,out:0.08},
-    quality:{in:0.59,out:0.79},
-    deepseek:{in:0.14,out:0.28},
-    qwen:{in:0.20,out:0.60},
-    coder:{in:0.22,out:0.66},
-  };
+  const total=PT.usage.input+PT.usage.output;
+  const totEl=document.getElementById('pt-tok-total');
+  if(totEl)totEl.textContent=ptFmtTok(total);
+  const ctx=PT_CTX_TOKENS[PT.model];
+  const ctxEl=document.getElementById('pt-tok-ctx');
+  if(ctxEl)ctxEl.textContent=ctx?ptFmtTok(ctx):'—';
+  const rates={fast:{in:0.05,out:0.08},quality:{in:0.59,out:0.79},deepseek:{in:0.14,out:0.28},qwen:{in:0.20,out:0.60},coder:{in:0.22,out:0.66}};
   const r=rates[PT.model]||{in:0.05,out:0.08};
   const cost=((PT.usage.input/1e6)*r.in+(PT.usage.output/1e6)*r.out);
   const el=document.getElementById('pt-tok-cost');
@@ -876,24 +880,25 @@ function ptCmdTokens() {
   const total=input+output;
   ptL('');
   ptL(C.b+C.white+'Token usage — this session'+C.r);
-  ptL(C.gray+'─'.repeat(40)+C.r);
-  ptL('  '+C.gray+'Calls:       '+C.r+C.cyan+calls+C.r);
-  ptL('  '+C.gray+'Input:       '+C.r+C.green+input.toLocaleString()+C.r+' tokens');
-  ptL('  '+C.gray+'Output:      '+C.r+C.blue+output.toLocaleString()+C.r+' tokens');
-  ptL('  '+C.gray+'Total:       '+C.r+C.white+total.toLocaleString()+C.r+' tokens');
+  ptL(C.gray+'─'.repeat(50)+C.r);
+  ptL('  '+C.gray+'Calls:  '+C.r+C.cyan+calls+C.r);
+  ptL('  '+C.gray+'Input:  '+C.r+C.green+input.toLocaleString()+C.r+' tokens');
+  ptL('  '+C.gray+'Output: '+C.r+C.blue+output.toLocaleString()+C.r+' tokens');
+  ptL('  '+C.gray+'Total:  '+C.r+C.white+total.toLocaleString()+C.r+' tokens (Σ this session)');
   ptL('');
-  ptL(C.b+'Cost estimates (if paid — NIM free tier = $0):'+C.r);
+  ptL(C.b+'Model limits, context window & estimated cost:'+C.r);
   const models={
-    fast:    {n:'Groq llama-3.1-8b',        in:0.05, out:0.08, limit:'~unlimited · 500k TPM'},
-    quality: {n:'Groq llama-3.3-70b',       in:0.59, out:0.79, limit:'1,000 req/day · 6k TPM'},
-    deepseek:{n:'NIM deepseek-v4-pro',        in:0.14, out:0.28, limit:'40 RPM · no daily cap'},
-    qwen:    {n:'NIM qwen3.5-397b-a17b',     in:0.20, out:0.60, limit:'40 RPM · 131K ctx'},
-    coder:   {n:'NIM qwen3-coder-480b-a35b', in:0.22, out:0.66, limit:'40 RPM · 256K ctx'},
+    fast:    {n:'Groq llama-3.1-8b',        ctx:131072, in:0.05, out:0.08, limit:'~unlimited · 500k TPM'},
+    quality: {n:'Groq llama-3.3-70b',       ctx:131072, in:0.59, out:0.79, limit:'1,000 req/day · 6k TPM'},
+    deepseek:{n:'NIM deepseek-v4-pro',       ctx:65536,  in:0.14, out:0.28, limit:'40 RPM free'},
+    qwen:    {n:'NIM qwen3.5-397b',          ctx:131072, in:0.20, out:0.60, limit:'40 RPM free'},
+    coder:   {n:'NIM qwen3-coder-480b',      ctx:262144, in:0.22, out:0.66, limit:'40 RPM free'},
   };
+  ptL('  '+C.gray+'  model                ctx       cost (session)  rate'+C.r);
   Object.entries(models).forEach(([id,m])=>{
     const cost=((input/1e6)*m.in+(output/1e6)*m.out);
     const cur=id===PT.model;
-    ptL('  '+(cur?C.green+'→ '+C.r:'  ')+C.cyan+m.n.padEnd(22)+C.r+'$'+cost.toFixed(5)+'  '+C.gray+m.limit+C.r);
+    ptL('  '+(cur?C.green+'→ '+C.r:'  ')+C.cyan+m.n.padEnd(22)+C.r+ptFmtTok(m.ctx).padStart(6)+'  $'+cost.toFixed(5)+'  '+C.gray+m.limit+C.r);
   });
   ptL('');
   ptL(C.gray+'SWE-bench: Sonnet 79.6% · Coder 69.6% · DeepSeek V4 ~72% · Groq 70b ~60%'+C.r);
@@ -905,7 +910,7 @@ const MODEL_INFO = {
   fast: {
     badge:'Groq', badgeClass:'groq',
     name:'llama-3.1-8b-instant',
-    ctx:'32K', limit:'~unlimited', swe:null,
+    ctx:'128K', limit:'~unlimited', swe:null,
     good:[
       'Instant answers while you build — no wait',
       'Navigation: ls, cat, grep, log, status',
@@ -917,7 +922,7 @@ const MODEL_INFO = {
   quality: {
     badge:'Groq', badgeClass:'groq',
     name:'llama-3.3-70b-versatile',
-    ctx:'32K', limit:'1,000 req/day', swe:'~60%',
+    ctx:'128K', limit:'1,000 req/day', swe:'~60%',
     good:[
       'Planning sessions & architecture discussions',
       'Explaining what a module or pattern does',
