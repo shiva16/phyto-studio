@@ -89,6 +89,47 @@ html,body{height:100%;background:#0d1117;color:#e6edf3;font-family:'Cascadia Cod
   padding:0 12px;font-size:11px;color:#6e7681;flex-shrink:0;font-family:system-ui,sans-serif;
 }
 .pt-status-right{display:flex;gap:12px;align-items:center}
+
+/* ── Model picker popup ── */
+#pt-model-popup{
+  position:fixed;z-index:999;
+  background:#161b22;border:1px solid #30363d;border-radius:10px;
+  width:290px;box-shadow:0 12px 32px rgba(0,0,0,0.5);
+  font-family:system-ui,sans-serif;font-size:12px;color:#c9d1d9;
+  animation:ptPopIn .12s ease;
+}
+@keyframes ptPopIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.pt-popup-hdr{padding:12px 14px 10px;border-bottom:1px solid #21262d}
+.pt-popup-badge{
+  display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;
+  padding:1px 6px;border-radius:4px;margin-bottom:6px;
+}
+.pt-popup-badge.groq{background:#1a3a2a;color:#3fb950}
+.pt-popup-badge.nim{background:#1a2a3a;color:#58a6ff}
+.pt-popup-name{font-size:13px;font-weight:700;color:#e6edf3;line-height:1.3;margin-bottom:3px}
+.pt-popup-meta{font-size:11px;color:#6e7681;display:flex;gap:10px;flex-wrap:wrap}
+.pt-popup-meta span{white-space:nowrap}
+.pt-popup-meta .swe{color:#d29922}
+.pt-popup-body{padding:10px 14px}
+.pt-popup-section{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6e7681;margin-bottom:5px}
+.pt-popup-list{list-style:none;margin:0 0 10px;padding:0}
+.pt-popup-list li{padding:2px 0;color:#c9d1d9;font-size:12px;line-height:1.5}
+.pt-popup-list li::before{content:'✓  ';color:#3fb950;font-size:11px}
+.pt-popup-avoid{font-size:11px;color:#6e7681;margin-bottom:12px;line-height:1.5;padding:6px 8px;background:#0d1117;border-radius:5px;border-left:2px solid #30363d}
+.pt-popup-warn{font-size:11px;color:#d29922;margin-bottom:10px;padding:5px 8px;background:#1c1a0d;border-radius:5px}
+.pt-popup-btns{display:flex;gap:8px}
+.pt-popup-use{
+  flex:1;padding:7px;border-radius:6px;border:none;
+  background:#238636;color:#fff;font-size:12px;font-weight:600;
+  cursor:pointer;transition:background .15s;
+}
+.pt-popup-use:hover{background:#2ea043}
+.pt-popup-cancel{
+  padding:7px 14px;border-radius:6px;border:1px solid #30363d;
+  background:transparent;color:#8b949e;font-size:12px;cursor:pointer;
+  transition:all .15s;
+}
+.pt-popup-cancel:hover{background:#21262d;color:#c9d1d9}
 </style>
 </head>
 <body>
@@ -124,10 +165,11 @@ html,body{height:100%;background:#0d1117;color:#e6edf3;font-family:'Cascadia Cod
       <option>main</option>
     </select>
     <div class="pt-model-pills">
-      <button class="pt-mpill active" data-model="fast" onclick="ptSetModel('fast')" title="Groq · llama-3.1-8b-instant · ~unlimited">Fast</button>
-      <button class="pt-mpill" data-model="quality" onclick="ptSetModel('quality')" title="Groq · llama-3.3-70b-versatile · 1k req/day">Quality</button>
-      <button class="pt-mpill" data-model="deepseek" onclick="ptSetModel('deepseek')" title="NVIDIA NIM · deepseek-ai/deepseek-v3 · 40 RPM free">DeepSeek</button>
-      <button class="pt-mpill" data-model="qwen" onclick="ptSetModel('qwen')" title="NVIDIA NIM · qwen/qwen3-235b-a22b · 40 RPM free · 262K ctx">Qwen 3.5</button>
+      <button class="pt-mpill active" data-model="fast"     onclick="ptShowModelPicker('fast',this)">Fast</button>
+      <button class="pt-mpill"        data-model="quality"  onclick="ptShowModelPicker('quality',this)">Quality</button>
+      <button class="pt-mpill"        data-model="deepseek" onclick="ptShowModelPicker('deepseek',this)">DeepSeek</button>
+      <button class="pt-mpill"        data-model="qwen"     onclick="ptShowModelPicker('qwen',this)">Qwen 3.5</button>
+      <button class="pt-mpill"        data-model="coder"    onclick="ptShowModelPicker('coder',this)">Coder</button>
     </div>
     <div id="pt-token-bar" style="display:none;align-items:center;gap:5px;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:3px 9px;font-size:11px;font-family:system-ui,sans-serif;white-space:nowrap;flex-shrink:0" title="Token usage this session">
       <span style="color:#3fb950">↑</span><span id="pt-tok-in" style="color:#c9d1d9">0</span>
@@ -287,6 +329,7 @@ function ptUpdateTokenBar(){
     quality:{in:0.59,out:0.79},
     deepseek:{in:0.14,out:0.28},
     qwen:{in:0.20,out:0.60},
+    coder:{in:0.22,out:0.66},
   };
   const r=rates[PT.model]||{in:0.05,out:0.08};
   const cost=((PT.usage.input/1e6)*r.in+(PT.usage.output/1e6)*r.out);
@@ -769,10 +812,11 @@ function ptCmdTokens() {
   ptL('');
   ptL(C.b+'Cost estimates (if paid — NIM free tier = $0):'+C.r);
   const models={
-    fast:    {n:'Groq llama-3.1-8b',   in:0.05, out:0.08,  limit:'~unlimited · 500k TPM'},
-    quality: {n:'Groq llama-3.3-70b',  in:0.59, out:0.79,  limit:'1,000 req/day · 6k TPM'},
-    deepseek:{n:'NIM deepseek-v3',      in:0.14, out:0.28,  limit:'40 RPM · no daily cap'},
-    qwen:    {n:'NIM qwen3-235b-a22b',  in:0.20, out:0.60,  limit:'40 RPM · 262K ctx'},
+    fast:    {n:'Groq llama-3.1-8b',        in:0.05, out:0.08, limit:'~unlimited · 500k TPM'},
+    quality: {n:'Groq llama-3.3-70b',       in:0.59, out:0.79, limit:'1,000 req/day · 6k TPM'},
+    deepseek:{n:'NIM deepseek-v3',           in:0.14, out:0.28, limit:'40 RPM · no daily cap'},
+    qwen:    {n:'NIM qwen3-235b-a22b',       in:0.20, out:0.60, limit:'40 RPM · 262K ctx'},
+    coder:   {n:'NIM qwen3-coder-480b-a35b', in:0.22, out:0.66, limit:'40 RPM · 256K ctx'},
   };
   Object.entries(models).forEach(([id,m])=>{
     const cost=((input/1e6)*m.in+(output/1e6)*m.out);
@@ -784,8 +828,140 @@ function ptCmdTokens() {
   ptL(C.gray+'Input counts without API usage data are estimated (~4 chars/tok).'+C.r);
 }
 
+// ── Model picker popup ────────────────────────────────────────────────────
+const MODEL_INFO = {
+  fast: {
+    badge:'Groq', badgeClass:'groq',
+    name:'llama-3.1-8b-instant',
+    ctx:'32K', limit:'~unlimited', swe:null,
+    good:[
+      'Instant answers while you build — no wait',
+      'Navigation: ls, cat, grep, log, status',
+      'Short explanations & quick lookups',
+      'Burning zero limit while staying in flow',
+    ],
+    avoid:'Full feature builds or anything needing deep reasoning',
+  },
+  quality: {
+    badge:'Groq', badgeClass:'groq',
+    name:'llama-3.3-70b-versatile',
+    ctx:'32K', limit:'1,000 req/day', swe:'~60%',
+    good:[
+      'Planning sessions & architecture discussions',
+      'Explaining what a module or pattern does',
+      'Moderate feature scaffolding',
+      'Fallback when NIM key not set',
+    ],
+    avoid:'Long build sessions — 1k/day cap runs out fast with agentic loops',
+  },
+  deepseek: {
+    badge:'NIM', badgeClass:'nim',
+    name:'deepseek-ai/deepseek-v3',
+    ctx:'64K', limit:'40 RPM free', swe:'~72%',
+    good:[
+      'Writing complete app files from scratch',
+      'JavaScript, HTML, CSS — deeply trained on web patterns',
+      'Building features like notes.tcplants or quant-onco modules',
+      'Best all-round free model for this kind of work',
+    ],
+    avoid:'Files over ~50K tokens — switch to Qwen or Coder for those',
+  },
+  qwen: {
+    badge:'NIM', badgeClass:'nim',
+    name:'qwen/qwen3-235b-a22b',
+    ctx:'262K', limit:'40 RPM free', swe:'61.7%',
+    good:[
+      'Reading an entire codebase in one pass (262K ctx)',
+      'Strict instruction following — 95% IFEval, best at multi-part specs',
+      'Refactoring across many interconnected files',
+      'When you need the model to hold a complex constraint throughout',
+    ],
+    avoid:'Pure code generation — DeepSeek edges it there; use this for large context work',
+  },
+  coder: {
+    badge:'NIM', badgeClass:'nim',
+    name:'qwen/qwen3-coder-480b-a35b-instruct',
+    ctx:'256K', limit:'40 RPM free', swe:'69.6%',
+    good:[
+      'Agentic build loops — read → plan → write → verify chains',
+      'Trained on 7.5T tokens, 70% code — knows web app patterns cold',
+      'Best free model for the PhytoTerm <gh> action workflow',
+      'Building full single-file apps (tcplants pattern, phyto-studio style)',
+    ],
+    avoid:'Nothing specific — purpose-built for exactly this kind of work',
+  },
+};
+
+let _popupClose = null;
+
+function ptShowModelPicker(model, el) {
+  // If popup for same pill is open, close it (toggle)
+  const existing = document.getElementById('pt-model-popup');
+  if(existing){
+    existing.remove();
+    if(_popupClose){document.removeEventListener('click',_popupClose);_popupClose=null;}
+    if(existing.dataset.model===model) return;
+  }
+
+  const info = MODEL_INFO[model];
+  if(!info){ ptSetModel(model); return; }
+
+  const nimModels=['deepseek','qwen','coder'];
+  const needsKey = nimModels.includes(model) && !PT.nimKey;
+  const isCurrent = PT.model===model;
+
+  const popup = document.createElement('div');
+  popup.id='pt-model-popup';
+  popup.dataset.model=model;
+  popup.innerHTML=`
+    <div class="pt-popup-hdr">
+      <div class="pt-popup-badge ${info.badgeClass}">${info.badge}</div>
+      <div class="pt-popup-name">${model==='coder'?'Qwen3 Coder':model==='qwen'?'Qwen 3.5':model==='deepseek'?'DeepSeek V3':model==='quality'?'Quality 70B':'Fast 8B'}</div>
+      <div class="pt-popup-meta">
+        <span style="font-family:monospace;font-size:10px;color:#8b949e">${info.name}</span>
+      </div>
+      <div class="pt-popup-meta" style="margin-top:5px">
+        <span>📐 ${info.ctx} ctx</span>
+        <span>⚡ ${info.limit}</span>
+        ${info.swe?`<span class="swe">SWE ${info.swe}</span>`:''}
+      </div>
+    </div>
+    <div class="pt-popup-body">
+      <div class="pt-popup-section">Good for</div>
+      <ul class="pt-popup-list">${info.good.map(g=>`<li>${g}</li>`).join('')}</ul>
+      <div class="pt-popup-avoid"><strong style="color:#8b949e">Skip when:</strong> ${info.avoid}</div>
+      ${needsKey?`<div class="pt-popup-warn">⚠ NIM key not set<br>Run: <code style="color:#58a6ff">config nim &lt;nvapi-key&gt;</code></div>`:''}
+      <div class="pt-popup-btns">
+        <button class="pt-popup-use" onclick="ptSelectModel('${model}')">${isCurrent?'✓ Active':'Use this model'}</button>
+        <button class="pt-popup-cancel" onclick="ptCloseModelPopup()">Cancel</button>
+      </div>
+    </div>`;
+
+  // Position below the pill
+  const rect=el.getBoundingClientRect();
+  const left=Math.min(rect.left, window.innerWidth-300);
+  popup.style.cssText=`position:fixed;top:${rect.bottom+6}px;left:${left}px;`;
+  document.body.appendChild(popup);
+
+  _popupClose=(e)=>{
+    if(!popup.contains(e.target)&&e.target!==el){ptCloseModelPopup();}
+  };
+  setTimeout(()=>document.addEventListener('click',_popupClose),50);
+}
+
+function ptCloseModelPopup(){
+  const p=document.getElementById('pt-model-popup');
+  if(p)p.remove();
+  if(_popupClose){document.removeEventListener('click',_popupClose);_popupClose=null;}
+}
+
+function ptSelectModel(model){
+  ptCloseModelPopup();
+  ptSetModel(model);
+}
+
 function ptSetModel(name) {
-  const aliases={f:'fast',q:'quality','8':'fast','70':'quality',ds:'deepseek',v3:'deepseek',qwen3:'qwen','3.5':'qwen',fast:'fast',quality:'quality',deepseek:'deepseek',qwen:'qwen'};
+  const aliases={f:'fast',q:'quality','8':'fast','70':'quality',ds:'deepseek',v3:'deepseek',qwen3:'qwen','3.5':'qwen',fast:'fast',quality:'quality',deepseek:'deepseek',qwen:'qwen',coder:'coder','480b':'coder','qwen-coder':'coder'};
   if(!name){
     const nimOk=PT.nimKey?C.green+'✓'+C.r:C.yellow+'no key'+C.r;
     ptL(C.b+'Models:'+C.r);
@@ -894,6 +1070,7 @@ async function ptCallGroq(messages) {
 const NIM_MODEL_IDS = {
   deepseek: 'deepseek-ai/deepseek-v3',
   qwen:     'qwen/qwen3-235b-a22b',
+  coder:    'qwen/qwen3-coder-480b-a35b-instruct',
 };
 
 async function ptCallNim(messages) {
@@ -909,7 +1086,7 @@ async function ptCallNim(messages) {
 }
 
 async function ptCallAI(messages) {
-  if(PT.model==='deepseek'||PT.model==='qwen') return ptCallNim(messages);
+  if(NIM_MODEL_IDS[PT.model]) return ptCallNim(messages);
   return ptCallGroq(messages);
 }
 
