@@ -675,7 +675,8 @@ function openDashSettings(){
 }
 
 function saveDashSettings(){
-  const w=document.getElementById('ds-worker')?.value.trim().replace(/\/$/,'');
+  let w=document.getElementById('ds-worker')?.value.trim().replace(/\/$/,'');
+  if(w&&!w.startsWith('http'))w='https://'+w;
   S.workerUrl=w||'';
   if(w)localStorage.setItem('ps_worker',w);else localStorage.removeItem('ps_worker');
   document.getElementById('dash-settings-overlay')?.remove();
