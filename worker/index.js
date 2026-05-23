@@ -1,3 +1,4 @@
+// v2 — Groq + NVIDIA NIM proxy
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const NIM_API_URL  = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const ALLOWED_ORIGINS = [
