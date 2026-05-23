@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhytoTerm</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+<script src="https://js.puter.com/v2/"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#0d1117;color:#e6edf3;font-family:'Cascadia Code','Fira Code','Courier New',monospace;overflow:hidden}
+
+/* ── Login ── */
+#pt-login{
+  display:flex;align-items:center;justify-content:center;
+  height:100vh;background:#0d1117;
+}
+.pt-login-box{
+  width:420px;background:#161b22;border:1px solid #30363d;
+  border-radius:10px;overflow:hidden;
+}
+.pt-login-top{
+  background:#1c2128;padding:20px 24px;border-bottom:1px solid #30363d;
+  display:flex;align-items:center;gap:10px;
+}
+.pt-login-logo{font-size:18px;font-weight:700;color:#58a6ff;letter-spacing:-.5px}
+.pt-login-sub{font-size:11px;color:#6e7681;margin-top:2px}
+.pt-login-body{padding:28px 24px}
+.pt-login-label{font-size:11px;color:#8b949e;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
+.pt-login-input{
+  width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;
+  color:#e6edf3;font-size:13px;font-family:inherit;padding:10px 12px;
+  outline:none;transition:border-color .15s;
+}
+.pt-login-input:focus{border-color:#58a6ff}
+.pt-login-btn{
+  width:100%;margin-top:16px;padding:10px;border-radius:6px;border:none;
+  background:#238636;color:#fff;font-size:13px;font-family:inherit;
+  font-weight:600;cursor:pointer;transition:background .15s;
+}
+.pt-login-btn:hover{background:#2ea043}
+.pt-login-btn:disabled{opacity:.5;cursor:default}
+.pt-login-err{font-size:12px;color:#f85149;margin-top:10px;min-height:16px;text-align:center}
+.pt-login-note{
+  font-size:11px;color:#6e7681;margin-top:20px;padding-top:16px;
+  border-top:1px solid #21262d;text-align:center;line-height:1.6;
+}
+.pt-login-note span{color:#3fb950}
+
+/* ── Terminal app ── */
+#pt-app{display:none;flex-direction:column;height:100vh}
+#pt-hdr{
+  display:flex;align-items:center;gap:8px;padding:0 12px;height:42px;
+  background:#161b22;border-bottom:1px solid #30363d;flex-shrink:0;overflow:hidden;
+}
+.pt-logo{font-size:13px;font-weight:700;color:#58a6ff;margin-right:4px;white-space:nowrap;letter-spacing:-.3px;font-family:system-ui,sans-serif}
+.pt-sel{
+  background:#21262d;border:1px solid #30363d;border-radius:6px;
+  color:#c9d1d9;font-size:11px;padding:3px 8px;cursor:pointer;outline:none;
+  font-family:'Cascadia Code','Fira Code','Courier New',monospace;max-width:200px;
+}
+.pt-sel:focus{border-color:#58a6ff}
+.pt-model-pills{
+  display:flex;gap:2px;background:#21262d;border:1px solid #30363d;
+  border-radius:6px;padding:2px;margin-left:4px;flex-shrink:0;
+}
+.pt-mpill{
+  padding:2px 9px;border-radius:4px;border:none;background:transparent;
+  color:#8b949e;font-size:11px;cursor:pointer;transition:all .1s;
+  font-family:system-ui,sans-serif;white-space:nowrap;
+}
+.pt-mpill.active{background:#388bfd22;color:#58a6ff}
+.pt-mpill:hover:not(.active){background:#30363d;color:#c9d1d9}
+.pt-hdr-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.pt-user-lbl{font-size:11px;color:#6e7681;font-family:system-ui,sans-serif}
+.pt-signout-btn{
+  padding:4px 10px;border-radius:6px;border:1px solid #30363d;
+  background:transparent;color:#8b949e;font-size:11px;cursor:pointer;
+  font-family:system-ui,sans-serif;transition:all .1s;white-space:nowrap;
+}
+.pt-signout-btn:hover{background:#21262d;color:#f85149}
+#pt-xterm{flex:1;overflow:hidden;padding:6px 4px;min-height:0}
+#pt-xterm .xterm{height:100%}
+#pt-xterm .xterm-viewport{scrollbar-width:thin;scrollbar-color:#30363d transparent}
+#pt-statusbar{
+  height:22px;background:#1c2128;border-top:1px solid #30363d;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 12px;font-size:11px;color:#6e7681;flex-shrink:0;font-family:system-ui,sans-serif;
+}
+.pt-status-right{display:flex;gap:12px;align-items:center}
+</style>
+</head>
+<body>
+
+<div id="pt-login">
+  <div class="pt-login-box">
+    <div class="pt-login-top">
+      <div>
+        <div class="pt-login-logo">⌨ PhytoTerm</div>
+        <div class="pt-login-sub">Encrypted AI dev terminal</div>
+      </div>
+    </div>
+    <div class="pt-login-body">
+      <div class="pt-login-label">GitHub Personal Access Token</div>
+      <input id="pt-pat-inp" class="pt-login-input" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false">
+      <button class="pt-login-btn" id="pt-connect-btn" onclick="ptHandleLogin()">Connect →</button>
+      <div class="pt-login-err" id="pt-login-err"></div>
+      <div class="pt-login-note">
+        All session data is <span>AES-256-GCM encrypted</span> before being written to GitHub.<br>
+        The PAT is the only key — never leaves your browser.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="pt-app">
+  <div id="pt-hdr">
+    <span class="pt-logo">⌨ PhytoTerm</span>
+    <select id="pt-repo-sel" class="pt-sel" onchange="ptCmdSetRepo(this.value)">
+      <option>loading…</option>
+    </select>
+    <select id="pt-branch-sel" class="pt-sel" onchange="PT.branch=this.value">
+      <option>main</option>
+    </select>
+    <div class="pt-model-pills">
+      <button class="pt-mpill active" data-model="claude-sonnet-4-6" onclick="ptSetModel('claude-sonnet-4-6')">Sonnet</button>
+      <button class="pt-mpill" data-model="deepseek/deepseek-r1-0528" onclick="ptSetModel('deepseek/deepseek-r1-0528')">DeepSeek</button>
+      <button class="pt-mpill" data-model="openai/gpt-5.4-nano" onclick="ptSetModel('openai/gpt-5.4-nano')">GPT nano</button>
+    </div>
+    <div class="pt-hdr-right">
+      <span class="pt-user-lbl" id="pt-user-lbl"></span>
+      <button class="pt-signout-btn" onclick="ptSignOut()">Sign out</button>
+    </div>
+  </div>
+  <div id="pt-xterm"></div>
+  <div id="pt-statusbar">
+    <span id="pt-status">ready</span>
+    <div class="pt-status-right"><span style="color:#3fb950">🔒 phyto-term · all-encrypted</span></div>
+  </div>
+</div>
+
+<script>
+// ── Standalone state (no Studio dependency) ──────────────────────────────
+const PT_REPO = 'phyto-term';
+
+let _PAT = sessionStorage.getItem('pt_pat') || '';
+let _KEY = null; // AES-256-GCM key, derived from PAT
+
+const PT = {
+  open: false, inited: false,
+  term: null, fitAddon: null,
+  repo: '', branch: 'main', path: '',
+  model: 'claude-sonnet-4-6',
+  messages: [],
+  transcript: [], sessionStart: null,
+  inputBuf: '', cmdHistory: [], histIdx: -1,
+  busy: false, ghUser: null, ptOwner: null,
+};
+
+// ── AES-256-GCM ───────────────────────────────────────────────────────────
+async function deriveKey(pat) {
+  const raw = await crypto.subtle.importKey('raw', new TextEncoder().encode(pat), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name:'PBKDF2', salt:new TextEncoder().encode('phyto-studio-2026'), iterations:100000, hash:'SHA-256' },
+    raw, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']
+  );
+}
+function _u8b64(buf) {
+  let s=''; for(let i=0;i<buf.length;i+=4096) s+=String.fromCharCode(...buf.subarray(i,i+4096)); return btoa(s);
+}
+async function aesEncrypt(plaintext) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({name:'AES-GCM',iv}, _KEY, new TextEncoder().encode(plaintext));
+  const buf = new Uint8Array(12+ct.byteLength); buf.set(iv,0); buf.set(new Uint8Array(ct),12);
+  return _u8b64(buf);
+}
+async function aesDecrypt(b64) {
+  const buf = Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
+  const pt = await crypto.subtle.decrypt({name:'AES-GCM',iv:buf.slice(0,12)}, _KEY, buf.slice(12));
+  return new TextDecoder().decode(pt);
+}
+
+// ── Login ─────────────────────────────────────────────────────────────────
+document.getElementById('pt-pat-inp').addEventListener('keydown', e => { if(e.key==='Enter') ptHandleLogin(); });
+
+async function ptHandleLogin() {
+  const inp = document.getElementById('pt-pat-inp');
+  const err = document.getElementById('pt-login-err');
+  const btn = document.getElementById('pt-connect-btn');
+  const pat = inp.value.trim();
+  if (!pat) { err.textContent = 'PAT required'; return; }
+  btn.disabled = true; err.textContent = 'Verifying…';
+  try {
+    const r = await fetch('https://api.github.com/user', { headers:{ Authorization:'token '+pat } });
+    if (!r.ok) { err.textContent = 'Invalid PAT'; btn.disabled=false; return; }
+    _PAT = pat;
+    _KEY = await deriveKey(pat);
+    sessionStorage.setItem('pt_pat', pat);
+    err.textContent = '';
+    document.getElementById('pt-login').style.display = 'none';
+    document.getElementById('pt-app').style.display = 'flex';
+    await ptInit();
+  } catch(e) { err.textContent = 'Error: '+e.message; btn.disabled=false; }
+}
+
+function ptSignOut() {
+  sessionStorage.removeItem('pt_pat');
+  sessionStorage.removeItem('pt_state');
+  _PAT=''; _KEY=null;
+  if(PT.term) { PT.term.dispose(); PT.term=null; }
+  PT.inited=false;
+  document.getElementById('pt-app').style.display='none';
+  document.getElementById('pt-login').style.display='flex';
+  document.getElementById('pt-pat-inp').value='';
+}
+
+// ── ANSI colors ───────────────────────────────────────────────────────────
+const C = {
+  r:'\x1b[0m', b:'\x1b[1m', d:'\x1b[2m',
+  red:'\x1b[31m', green:'\x1b[32m', yellow:'\x1b[33m',
+  blue:'\x1b[34m', cyan:'\x1b[36m', gray:'\x1b[90m', white:'\x1b[97m',
+  bgreen:'\x1b[92m', bcyan:'\x1b[96m',
+};
+function ptW(s){ PT.term&&PT.term.write(s||''); }
+function ptL(s){ PT.term&&PT.term.write((s==null?'':s)+'\r\n'); }
+function ptClear(){ PT.term&&PT.term.write('\r\x1b[2K'); }
+function ptLog(type,text){ PT.transcript.push({t:new Date().toISOString(),type,text}); }
+
+function ptPrompt() {
+  const rn = PT.repo.split('/')[1]||PT.repo;
+  const pp = PT.path?'/'+PT.path:'';
+  ptW('\r\n'+C.green+rn+pp+C.r+' '+C.cyan+'('+PT.branch+')'+C.r+' '+C.yellow+'$'+C.r+' ');
+}
+
+// ── Session persistence ───────────────────────────────────────────────────
+function ptSaveSessionState() {
+  try {
+    sessionStorage.setItem('pt_state', JSON.stringify({
+      repo:PT.repo, branch:PT.branch, path:PT.path, model:PT.model,
+      messages:PT.messages.slice(-40),
+    }));
+  } catch {}
+}
+function ptRestoreSessionState() {
+  try {
+    const raw = sessionStorage.getItem('pt_state');
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    PT.repo=s.repo||PT.repo; PT.branch=s.branch||PT.branch;
+    PT.path=s.path||''; PT.model=s.model||PT.model;
+    PT.messages=s.messages||[];
+    return true;
+  } catch { return false; }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+async function ptInit() {
+  PT.term = new Terminal({
+    theme:{
+      background:'#0d1117', foreground:'#e6edf3',
+      cursor:'#58a6ff', cursorAccent:'#0d1117', selectionBackground:'#264f7866',
+      black:'#484f58', red:'#ff7b72', green:'#3fb950', yellow:'#d29922',
+      blue:'#58a6ff', magenta:'#bc8cff', cyan:'#39c5cf', white:'#b1bac4',
+      brightBlack:'#6e7681', brightRed:'#ffa198', brightGreen:'#56d364',
+      brightYellow:'#e3b341', brightBlue:'#79c0ff', brightMagenta:'#d2a8ff',
+      brightCyan:'#56d4dd', brightWhite:'#f0f6fc',
+    },
+    fontFamily:'"Cascadia Code","Fira Code","JetBrains Mono","Courier New",monospace',
+    fontSize:13, lineHeight:1.5, cursorBlink:true, cursorStyle:'bar', scrollback:5000,
+  });
+  PT.fitAddon = new FitAddon.FitAddon();
+  PT.term.loadAddon(PT.fitAddon);
+  PT.term.open(document.getElementById('pt-xterm'));
+  PT.fitAddon.fit();
+
+  const ro = new ResizeObserver(() => PT.fitAddon&&PT.fitAddon.fit());
+  ro.observe(document.getElementById('pt-xterm'));
+
+  PT.term.onKey(({key,domEvent}) => ptHandleKey(key,domEvent));
+  PT.term.onData(data => {
+    if(data.length>1&&!data.startsWith('\x1b')&&!data.startsWith('\r')&&!data.startsWith('\n')) {
+      if(PT.busy) return;
+      const clean = data.replace(/[\r\n]+/g,' ');
+      PT.inputBuf += clean; ptW(clean);
+    }
+  });
+  PT.inited = true;
+  PT.sessionStart = new Date().toISOString();
+
+  document.addEventListener('visibilitychange', () => {
+    if(!document.hidden&&typeof puter!=='undefined') {
+      try{ if(!puter.auth.isSignedIn()) puter.auth.signIn().catch(()=>{}); }catch{}
+    }
+  });
+
+  ptL(C.bgreen+C.b+'  PhytoTerm'+C.r+C.gray+'  standalone · all-encrypted'+C.r);
+  ptL(C.gray+'  Booting…'+C.r);
+
+  const hadState = ptRestoreSessionState();
+  await ptGhBoot(hadState);
+
+  ptL('');
+  ptL(C.gray+'  '+C.white+'help'+C.gray+' — commands   '+C.white+'exit'+C.gray+' — save & sign out'+C.r);
+  if(hadState&&PT.messages.length) ptL(C.gray+'  AI context: '+Math.floor(PT.messages.length/2)+' exchanges restored'+C.r);
+  ptPrompt();
+  PT.term.focus();
+}
+
+async function ptGhBoot(hadState) {
+  try {
+    const user = await ptApiGet('https://api.github.com/user');
+    PT.ghUser = user.login;
+    PT.ptOwner = user.login+'/'+PT_REPO;
+    if(!PT.repo) PT.repo = user.login+'/phyto-studio';
+    document.getElementById('pt-user-lbl').textContent = user.login;
+
+    const repos = await ptApiGet('https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator');
+    const sel = document.getElementById('pt-repo-sel');
+    sel.innerHTML = repos.map(r=>'<option value="'+r.full_name+'"'+(r.full_name===PT.repo?' selected':'')+'>'+r.full_name+'</option>').join('');
+
+    await ptEnsureDataRepo();
+    if(!hadState) await ptLoadContext();
+    await ptLoadBranches(PT.repo);
+    ptUpdateStatus('ready');
+  } catch(e) { ptL(C.yellow+'  Warning: '+e.message+C.r); }
+}
+
+async function ptEnsureDataRepo() {
+  try {
+    const repo = await ptApiGet('https://api.github.com/repos/'+PT.ptOwner);
+    // Ensure public — all content is encrypted
+    if(repo.private) {
+      try {
+        await fetch('https://api.github.com/repos/'+PT.ptOwner, {
+          method:'PATCH',
+          headers:{Authorization:'token '+_PAT, Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},
+          body:JSON.stringify({private:false}),
+        });
+      } catch {}
+    }
+  } catch {
+    ptL(C.gray+'  Creating '+C.cyan+PT_REPO+C.gray+' (public, all-encrypted)…'+C.r);
+    await ptApiPost('https://api.github.com/user/repos', {
+      name:PT_REPO, private:false,
+      description:'PhytoTerm encrypted data store — all files are AES-256-GCM ciphertext',
+      auto_init:true,
+    });
+    ptL(C.green+'  ✓ '+PT.ptOwner+C.r);
+  }
+}
+
+async function ptLoadContext() {
+  try { const r=await ptPrivateGet('context/state.enc'); if(r){ const s=JSON.parse(await aesDecrypt(r)); PT.repo=s.repo||PT.repo; PT.branch=s.branch||PT.branch; PT.path=s.path||''; PT.model=s.model||PT.model; } } catch {}
+  try { const r=await ptPrivateGet('context/conversation.enc'); if(r){ PT.messages=JSON.parse(await aesDecrypt(r)); } } catch {}
+}
+
+async function ptSaveContext() {
+  await ptPrivatePut('context/state.enc', await aesEncrypt(JSON.stringify({repo:PT.repo,branch:PT.branch,path:PT.path,model:PT.model})), 'chore: update state');
+  await ptPrivatePut('context/conversation.enc', await aesEncrypt(JSON.stringify(PT.messages.slice(-40))), 'chore: update context');
+}
+
+async function ptSaveSessionLog() {
+  try {
+    const lines = ['# PhytoTerm Session','# Started: '+PT.sessionStart,'# Ended:   '+new Date().toISOString(),'# Repo:    '+PT.repo,''];
+    PT.transcript.forEach(e => {
+      const ts = new Date(e.t).toLocaleTimeString('en-IN');
+      if(e.type==='cmd') lines.push('['+ts+'] $ '+e.text);
+      else if(e.type==='ai') lines.push('['+ts+'] AI: '+e.text);
+      else if(e.type==='gh') lines.push('['+ts+'] GH: '+e.text);
+    });
+    const enc = await aesEncrypt(lines.join('\n'));
+    const today = new Date().toISOString().split('T')[0];
+    let n=1;
+    try { const ex=await ptApiGet('https://api.github.com/repos/'+PT.ptOwner+'/contents/sessions?ref=main'); n=ex.filter(f=>f.name.startsWith(today)).length+1; } catch {}
+    const path = 'sessions/'+today+'_session-'+n+'.enc';
+    await ptPrivatePut(path, enc, 'log: session '+today+' #'+n);
+    return path;
+  } catch(e) { ptL(C.red+'Log save failed: '+e.message+C.r); return null; }
+}
+
+// ── GitHub API ────────────────────────────────────────────────────────────
+async function ptApiGet(url) {
+  const r = await fetch(url, {headers:{Authorization:'token '+_PAT, Accept:'application/vnd.github.v3+json'}});
+  if(!r.ok){const e=await r.json();throw new Error(e.message||'HTTP '+r.status);}
+  return r.json();
+}
+async function ptApiPost(url, body) {
+  const r = await fetch(url,{method:'POST',headers:{Authorization:'token '+_PAT,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){const e=await r.json();throw new Error(e.message||'HTTP '+r.status);}
+  return r.json();
+}
+async function ptApiPut(url, body) {
+  const r = await fetch(url,{method:'PUT',headers:{Authorization:'token '+_PAT,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){const e=await r.json();throw new Error(e.message||'HTTP '+r.status);}
+  return r.json();
+}
+async function ptApiDel(url, body) {
+  const r = await fetch(url,{method:'DELETE',headers:{Authorization:'token '+_PAT,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){const e=await r.json();throw new Error(e.message||'HTTP '+r.status);}
+  return r.json();
+}
+async function ptPrivateGet(path) {
+  try {
+    const d = await ptApiGet('https://api.github.com/repos/'+PT.ptOwner+'/contents/'+path+'?ref=main');
+    return decodeURIComponent(escape(atob(d.content.replace(/\n/g,''))));
+  } catch { return null; }
+}
+async function ptPrivatePut(path, content, msg) {
+  let sha; try{sha=(await ptApiGet('https://api.github.com/repos/'+PT.ptOwner+'/contents/'+path+'?ref=main')).sha;}catch{}
+  const body={message:msg,content:btoa(unescape(encodeURIComponent(content))),branch:'main'};
+  if(sha) body.sha=sha;
+  return ptApiPut('https://api.github.com/repos/'+PT.ptOwner+'/contents/'+path, body);
+}
+async function ptLoadBranches(repo) {
+  try {
+    const bs = await ptApiGet('https://api.github.com/repos/'+repo+'/branches');
+    const sel = document.getElementById('pt-branch-sel');
+    if(sel) sel.innerHTML = bs.map(b=>'<option value="'+b.name+'"'+(b.name===PT.branch?' selected':'')+'>'+b.name+'</option>').join('');
+  } catch {}
+}
+
+// ── Key handler ───────────────────────────────────────────────────────────
+function ptHandleKey(key, ev) {
+  if(PT.busy) {
+    if(ev.ctrlKey&&ev.key==='c'){PT.busy=false;ptW('\r\n'+C.yellow+'^C'+C.r);ptPrompt();}
+    return;
+  }
+  if(ev.key==='Enter') {
+    ptW('\r\n');
+    const cmd=PT.inputBuf.trim(); PT.inputBuf='';
+    if(cmd){
+      if(PT.cmdHistory[0]!==cmd) PT.cmdHistory.unshift(cmd);
+      if(PT.cmdHistory.length>200) PT.cmdHistory.pop();
+      PT.histIdx=-1; ptLog('cmd',cmd); ptRun(cmd);
+    } else ptPrompt();
+    return;
+  }
+  if(ev.key==='Backspace'){if(PT.inputBuf.length){PT.inputBuf=PT.inputBuf.slice(0,-1);ptW('\b \b');}return;}
+  if(ev.key==='ArrowUp'){
+    if(PT.cmdHistory.length){PT.histIdx=Math.min(PT.histIdx+1,PT.cmdHistory.length-1);const s=PT.cmdHistory[PT.histIdx];ptW('\b \b'.repeat(PT.inputBuf.length));PT.inputBuf=s;ptW(s);}
+    return;
+  }
+  if(ev.key==='ArrowDown'){
+    if(PT.histIdx>0){PT.histIdx--;const s=PT.cmdHistory[PT.histIdx];ptW('\b \b'.repeat(PT.inputBuf.length));PT.inputBuf=s;ptW(s);}
+    else if(PT.histIdx===0){PT.histIdx=-1;ptW('\b \b'.repeat(PT.inputBuf.length));PT.inputBuf='';}
+    return;
+  }
+  if(ev.ctrlKey&&ev.key==='c'){PT.inputBuf='';ptW('^C\r\n');ptPrompt();return;}
+  if(ev.ctrlKey&&ev.key==='l'){PT.term.clear();ptPrompt();return;}
+  if(ev.ctrlKey&&ev.key==='r'){ptHistSearch();return;}
+  if(ev.key==='Tab'){ev.preventDefault();ptTabComplete();return;}
+  if(!ev.ctrlKey&&!ev.altKey&&!ev.metaKey&&key.length===1){PT.inputBuf+=key;ptW(key);}
+}
+
+// ── Tab completion ────────────────────────────────────────────────────────
+async function ptTabComplete() {
+  const buf=PT.inputBuf;
+  const parts=buf.split(/\s+/);
+  const partial=parts[parts.length-1]||'';
+  const prefix=parts.length>1?parts.slice(0,-1).join(' ')+' ':'';
+  const lastSlash=partial.lastIndexOf('/');
+  const dirPart=lastSlash>=0?ptResolvePath(partial.slice(0,lastSlash)):PT.path;
+  const namePart=lastSlash>=0?partial.slice(lastSlash+1):partial;
+  try {
+    const data=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/contents/'+dirPart+'?ref='+PT.branch);
+    const items=(Array.isArray(data)?data:[]).filter(i=>i.name.startsWith(namePart));
+    if(!items.length) return;
+    if(items.length===1){
+      const completion=items[0].name+(items[0].type==='dir'?'/':'');
+      const newArg=(lastSlash>=0?partial.slice(0,lastSlash+1):'')+completion;
+      ptW('\b \b'.repeat(partial.length)); PT.inputBuf=prefix+newArg; ptW(newArg);
+    } else {
+      ptW('\r\n'); items.forEach(i=>ptW(C.cyan+(i.type==='dir'?i.name+'/':i.name)+C.r+'  '));
+      ptW('\r\n'); ptPrompt(); ptW(buf);
+    }
+  } catch {}
+}
+
+// ── Ctrl+R history search ─────────────────────────────────────────────────
+function ptHistSearch() {
+  let searchBuf='';
+  ptClear(); ptW(C.gray+'(history search) '+C.r);
+  const listener=PT.term.onKey(({key,domEvent})=>{
+    if(domEvent.key==='Escape'){listener.dispose();ptClear();ptPrompt();ptW(PT.inputBuf);return;}
+    if(domEvent.key==='Enter'){
+      const match=PT.cmdHistory.find(h=>h.toLowerCase().includes(searchBuf.toLowerCase()));
+      listener.dispose();ptClear();ptPrompt();
+      if(match){PT.inputBuf=match;ptW(match);}
+      return;
+    }
+    if(domEvent.key==='Backspace') searchBuf=searchBuf.slice(0,-1);
+    else if(domEvent.key.length===1&&!domEvent.ctrlKey) searchBuf+=domEvent.key;
+    const match=PT.cmdHistory.find(h=>h.toLowerCase().includes(searchBuf.toLowerCase()));
+    ptClear(); ptW(C.gray+'(search: '+C.white+searchBuf+C.gray+')'+C.r+' '+(match||''));
+  });
+}
+
+// ── Path helper ───────────────────────────────────────────────────────────
+function ptResolvePath(p) {
+  if(!p||p==='.') return PT.path;
+  if(p==='/'||p==='~') return '';
+  if(p==='..') return PT.path.includes('/')?PT.path.split('/').slice(0,-1).join('/'):'';
+  if(p.startsWith('/')) return p.slice(1);
+  return PT.path?PT.path+'/'+p:p;
+}
+function ptFmtSize(n){if(!n)return'';if(n<1024)return n+'B';if(n<1048576)return(n/1024).toFixed(1)+'KB';return(n/1048576).toFixed(1)+'MB';}
+function ptUpdateStatus(msg){const el=document.getElementById('pt-status');if(el)el.textContent=msg;}
+
+// ── Command router ────────────────────────────────────────────────────────
+async function ptRun(cmd) {
+  PT.busy=true; ptUpdateStatus('running…');
+  const parts=cmd.trim().split(/\s+/);
+  const verb=parts[0].toLowerCase();
+  const rest=parts.slice(1).join(' ');
+  const args=parts.slice(1);
+  try {
+    switch(verb) {
+      case 'help':      ptHelp(); break;
+      case 'ls': case 'dir': await ptCmdLs(args[0]); break;
+      case 'cat': case 'type': await ptCmdCat(rest,true); break;
+      case 'head':      await ptCmdHead(rest); break;
+      case 'tail':      await ptCmdTail(rest); break;
+      case 'cd':        ptCmdCd(args[0]); break;
+      case 'pwd':       ptL('/'+(PT.path||'')); break;
+      case 'find':      await ptCmdFind(args[0],args[1]); break;
+      case 'grep':      await ptCmdGrep(args[0],args.slice(1).join(' ')); break;
+      case 'wc':        await ptCmdWc(args[0]); break;
+      case 'repos':     await ptCmdRepos(); break;
+      case 'repo':      await ptCmdSetRepo(rest); break;
+      case 'branch':    await ptCmdSetBranch(args[0]); break;
+      case 'branches':  await ptCmdBranches(); break;
+      case 'log': case 'commits': await ptCmdLog(parseInt(args[0])||10); break;
+      case 'status':    await ptCmdStatus(); break;
+      case 'diff':      await ptCmdDiff(args[0]); break;
+      case 'create': case 'touch': await ptCmdCreate(args[0]); break;
+      case 'rm': case 'delete': await ptCmdRm(args[0]); break;
+      case 'mv': case 'rename': await ptCmdMv(args[0],args[1]); break;
+      case 'cp': case 'copy':   await ptCmdCp(args[0],args[1]); break;
+      case 'issues':    await ptCmdIssues(parseInt(args[0])||10); break;
+      case 'pr':        await ptCmdPr(rest); break;
+      case 'prs':       await ptCmdPrs(); break;
+      case 'open':      ptCmdOpen(args[0]); break;
+      case 'new-repo':  await ptCmdNewRepo(args[0],args.includes('--private')); break;
+      case 'sessions':  await ptCmdSessions(); break;
+      case '/review':   await ptAskClaude('Review this file and give detailed feedback: '+rest); break;
+      case '/explain':  await ptAskClaude('Explain what this file does in detail: '+rest); break;
+      case '/improve':  await ptAskClaude('Improve this file — better code, best practices: '+rest); break;
+      case '/summarize':await ptAskClaude('Summarize the last '+(rest||'5')+' commits'); break;
+      case '/todos':    await ptAskClaude('Find all TODO/FIXME/HACK comments in the repo'); break;
+      case '/audit':    await ptAskClaude('Security and quality audit the repo. List issues by severity.'); break;
+      case '/readme':   await ptAskClaude('Generate or update the README.md for this repo'); break;
+      case 'whoami':    ptL((PT.ghUser||'?')+'  '+C.gray+PT.ptOwner+' 🔒'+C.r); break;
+      case 'clear': case 'cls': PT.term.clear(); break;
+      case 'reset':     PT.messages=[]; ptL(C.green+'Context cleared.'+C.r); break;
+      case '/model':    ptSetModel(args.join(' ')); break;
+      case 'exit':      await ptExit(); return;
+      default:          await ptAskClaude(cmd); break;
+    }
+  } catch(e) { ptL(C.red+'Error: '+e.message+C.r); }
+  PT.busy=false; ptUpdateStatus('ready');
+  ptPrompt();
+}
+
+// ── Commands ──────────────────────────────────────────────────────────────
+async function ptCmdLs(sub) {
+  const path=ptResolvePath(sub);
+  const data=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/contents/'+path+'?ref='+PT.branch);
+  const items=Array.isArray(data)?data:[data];
+  items.filter(i=>i.type==='dir').sort((a,b)=>a.name.localeCompare(b.name)).forEach(d=>ptL(C.cyan+d.name+'/'+C.r));
+  items.filter(i=>i.type==='file').sort((a,b)=>a.name.localeCompare(b.name)).forEach(f=>ptL(f.name+'  '+C.gray+ptFmtSize(f.size)+C.r));
+  const dirs=items.filter(i=>i.type==='dir').length,files=items.filter(i=>i.type==='file').length;
+  ptL(C.gray+'('+dirs+' dirs, '+files+' files)'+C.r);
+}
+
+async function ptCmdCat(p,highlight) {
+  const path=ptResolvePath(p);
+  const data=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/contents/'+path+'?ref='+PT.branch);
+  if(data.encoding==='base64'){
+    const txt=decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));
+    if(highlight&&path.endsWith('.json')){try{ptW(JSON.stringify(JSON.parse(txt),null,2).replace(/\n/g,'\r\n'));ptL('');return;}catch{}}
+    if(highlight&&path.endsWith('.csv')){
+      const rows=txt.trim().split('\n');
+      ptL(C.cyan+rows[0].split(',').join('  '+C.gray+'│'+C.cyan+'  ')+C.r);
+      ptL(C.gray+'─'.repeat(60)+C.r);
+      rows.slice(1,21).forEach(row=>ptL(row.split(',').map((c,i)=>i===0?C.yellow+c+C.r:c).join('  │  ')));
+      if(rows.length>22) ptL(C.gray+'… ('+(rows.length-22)+' more rows)'+C.r);
+      return;
+    }
+    ptW(txt.replace(/\n/g,'\r\n')); if(!txt.endsWith('\n')) ptL('');
+  }
+}
+
+async function ptCmdHead(p) {
+  const path=ptResolvePath(p);
+  const data=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/contents/'+path+'?ref='+PT.branch);
+  if(data.encoding==='base64'){const txt=decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));const lines=txt.split('\n');ptW(lines.slice(0,30).join('\r\n'));ptL('');if(lines.length>30)ptL(C.gray+'… ('+(lines.length-30)+' more)'+C.r);}
+}
+
+async function ptCmdTail(p) {
+  const path=ptResolvePath(p);
+  const data=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/contents/'+path+'?ref='+PT.branch);
+  if(data.encoding==='base64'){const txt=decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));const lines=txt.split('\n');if(lines.length>30)ptL(C.gray+'… ('+(lines.length-30)+' lines above)'+C.r);ptW(lines.slice(-30).join('\r\n'));ptL('');}
+}
+
+function ptCmdCd(p){if(!p)return;PT.path=ptResolvePath(p);ptL(C.gray+'→ /'+(PT.path||'')+C.r);}
+
+async function ptCmdFind(pattern,path) {
+  const searchPath=path||PT.path||'';
+  const ext=pattern&&pattern.startsWith('*.')?pattern.slice(1):null;
+  const namePat=pattern&&!pattern.startsWith('*.')?pattern.toLowerCase():null;
+  ptL(C.gray+'Searching '+(searchPath||'/')+'…'+C.r);
+  const results=[];
+  async function walk(p){try{const items=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/contents/'+p+'?ref='+PT.branch);for(const item of(Array.isArray(items)?items:[])){if(item.type==='dir')await walk(item.path);else if(item.type==='file'){const match=(!ext&&!namePat)||(ext&&item.name.endsWith(ext))||(namePat&&item.name.toLowerCase().includes(namePat));if(match)results.push(item.path);}}}catch{}}
+  await walk(searchPath);
+  if(!results.length){ptL(C.gray+'No matches.'+C.r);return;}
+  results.forEach(r=>ptL(C.cyan+r+C.r));
+  ptL(C.gray+'('+results.length+' results)'+C.r);
+}
+
+async function ptCmdGrep(pattern,file) {
+  if(!pattern||!file){ptL(C.gray+'Usage: grep <pattern> <file>'+C.r);return;}
+  const path=ptResolvePath(file);
+  const data=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/contents/'+path+'?ref='+PT.branch);
+  if(data.encoding==='base64'){
+    const txt=decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));
+    const re=new RegExp(pattern,'gi'); let matches=0;
+    txt.split('\n').forEach((line,i)=>{if(re.test(line)){matches++;ptL(C.gray+(i+1)+':'+C.r+line.replace(new RegExp(pattern,'gi'),m=>C.yellow+C.b+m+C.r));}});
+    ptL(C.gray+(matches?'('+matches+' matches)':'No matches')+C.r);
+  }
+}
+
+async function ptCmdWc(file) {
+  const path=ptResolvePath(file);
+  const data=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/contents/'+path+'?ref='+PT.branch);
+  if(data.encoding==='base64'){const txt=decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));ptL(C.cyan+txt.split('\n').length+C.r+' lines  '+C.cyan+txt.split(/\s+/).filter(Boolean).length+C.r+' words  '+C.cyan+txt.length+C.r+' chars  '+C.gray+file+C.r);}
+}
+
+async function ptCmdRepos() {
+  const repos=await ptApiGet('https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator');
+  repos.forEach(r=>ptL(C.cyan+r.full_name+C.r+(r.private?' '+C.yellow+'🔒'+C.r:'')+(r.language?' '+C.gray+'['+r.language+']'+C.r:'')+(r.description?'  '+C.gray+r.description+C.r:'')));
+}
+
+async function ptCmdSetRepo(repo) {
+  if(!repo){ptL('Current: '+C.cyan+PT.repo+C.r);return;}
+  if(!repo.includes('/')) repo=(PT.ghUser||'shiva16')+'/'+repo;
+  PT.repo=repo; PT.path=''; PT.branch='main'; PT.messages=[];
+  await ptLoadBranches(repo);
+  const sel=document.getElementById('pt-repo-sel');
+  if(sel){if(![...sel.options].find(o=>o.value===repo))sel.add(new Option(repo,repo));sel.value=repo;}
+  ptL(C.green+'Switched to '+C.cyan+repo+C.r);
+}
+
+async function ptCmdSetBranch(branch) {
+  if(!branch){ptL('Current: '+C.cyan+PT.branch+C.r);return;}
+  PT.branch=branch; const sel=document.getElementById('pt-branch-sel'); if(sel)sel.value=branch;
+  ptL(C.green+'On branch '+C.cyan+branch+C.r);
+}
+
+async function ptCmdBranches() {
+  const bs=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/branches');
+  bs.forEach(b=>ptL(b.name+(b.name===PT.branch?' '+C.green+'← current'+C.r:'')));
+}
+
+async function ptCmdLog(n) {
+  const cs=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/commits?ref='+PT.branch+'&per_page='+n);
+  cs.forEach(c=>ptL(C.yellow+c.sha.slice(0,7)+C.r+'  '+C.gray+new Date(c.commit.author.date).toLocaleDateString('en-IN',{day:'numeric',month:'short'})+C.r+'  '+c.commit.message.split('\n')[0]));
+}
+
+async function ptCmdStatus() {
+  ptL(C.gray+'Repo: '+C.cyan+PT.repo+C.r+'  branch: '+C.cyan+PT.branch+C.r);
+  try{const cs=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/commits?ref='+PT.branch+'&per_page=1');if(cs.length)ptL(C.gray+'HEAD: '+C.yellow+cs[0].sha.slice(0,7)+C.r+' '+cs[0].commit.message.split('\n')[0]);}catch{}
+}
+
+async function ptCmdDiff(file) {
+  if(!file){ptL(C.gray+'Usage: diff <file>'+C.r);return;}
+  const path=ptResolvePath(file);
+  try{
+    const cs=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/commits?ref='+PT.branch+'&per_page=2&path='+path);
+    if(cs.length<2){ptL(C.gray+'Only one commit for this file.'+C.r);return;}
+    const cmp=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/compare/'+cs[1].sha+'...'+cs[0].sha);
+    const f=cmp.files&&cmp.files.find(f=>f.filename===path);
+    if(!f){ptL(C.gray+'No diff.'+C.r);return;}
+    ptL(C.gray+'--- '+cs[1].sha.slice(0,7)+'  →  '+cs[0].sha.slice(0,7)+C.r);
+    (f.patch||'').split('\n').forEach(line=>{
+      if(line.startsWith('+')&&!line.startsWith('++'))ptW(C.green+line+C.r+'\r\n');
+      else if(line.startsWith('-')&&!line.startsWith('--'))ptW(C.red+line+C.r+'\r\n');
+      else if(line.startsWith('@@'))ptW(C.cyan+line+C.r+'\r\n');
+      else ptL(line);
+    });
+  }catch(e){ptL(C.red+e.message+C.r);}
+}
+
+async function ptCmdCreate(file){if(!file){ptL(C.gray+'Usage: create <file>'+C.r);return;}const path=ptResolvePath(file);await ptApiPut('https://api.github.com/repos/'+PT.repo+'/contents/'+path,{message:'chore: create '+path,content:btoa(''),branch:PT.branch});ptL(C.green+'✓ Created '+path+C.r);}
+async function ptCmdRm(file){if(!file){ptL(C.gray+'Usage: rm <file>'+C.r);return;}const path=ptResolvePath(file);const ex=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/contents/'+path+'?ref='+PT.branch);await ptApiDel('https://api.github.com/repos/'+PT.repo+'/contents/'+path,{message:'chore: delete '+path,sha:ex.sha,branch:PT.branch});ptL(C.green+'✓ Deleted '+path+C.r);}
+async function ptCmdMv(src,dst){if(!src||!dst){ptL(C.gray+'Usage: mv <src> <dst>'+C.r);return;}const sp=ptResolvePath(src),dp=ptResolvePath(dst);const sd=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/contents/'+sp+'?ref='+PT.branch);await ptApiPut('https://api.github.com/repos/'+PT.repo+'/contents/'+dp,{message:'chore: move '+sp+' → '+dp,content:sd.content.replace(/\n/g,''),branch:PT.branch});await ptApiDel('https://api.github.com/repos/'+PT.repo+'/contents/'+sp,{message:'chore: move (rm) '+sp,sha:sd.sha,branch:PT.branch});ptL(C.green+'✓ Moved '+sp+' → '+dp+C.r);}
+async function ptCmdCp(src,dst){if(!src||!dst){ptL(C.gray+'Usage: cp <src> <dst>'+C.r);return;}const sp=ptResolvePath(src),dp=ptResolvePath(dst);const sd=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/contents/'+sp+'?ref='+PT.branch);await ptApiPut('https://api.github.com/repos/'+PT.repo+'/contents/'+dp,{message:'chore: copy '+sp+' → '+dp,content:sd.content.replace(/\n/g,''),branch:PT.branch});ptL(C.green+'✓ Copied '+sp+' → '+dp+C.r);}
+
+async function ptCmdIssues(n){const is=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/issues?state=open&per_page='+n);if(!is.length){ptL(C.gray+'No open issues.'+C.r);return;}is.forEach(i=>ptL(C.yellow+'#'+i.number+C.r+'  '+i.title+'  '+i.labels.map(l=>C.gray+'['+l.name+']'+C.r).join(' ')));}
+async function ptCmdPr(title){if(!title){ptL(C.gray+'Usage: pr "Title"'+C.r);return;}const pr=await ptApiPost('https://api.github.com/repos/'+PT.repo+'/pulls',{title,body:'Created via PhytoTerm',head:PT.branch,base:'main'});ptL(C.green+'✓ PR #'+pr.number+': '+pr.title+C.r+'\r\n'+C.gray+pr.html_url+C.r);}
+async function ptCmdPrs(){const ps=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/pulls?state=open');if(!ps.length){ptL(C.gray+'No open PRs.'+C.r);return;}ps.forEach(p=>ptL(C.yellow+'#'+p.number+C.r+'  '+p.title+'  '+C.gray+p.head.ref+' → '+p.base.ref+C.r));}
+function ptCmdOpen(url){if(!url){ptL(C.gray+'Usage: open <url>'+C.r);return;}window.open(url.startsWith('http')?url:'https://github.com/'+PT.repo,'_blank');ptL(C.gray+'Opened in new tab.'+C.r);}
+async function ptCmdNewRepo(name,isPrivate){if(!name){ptL(C.gray+'Usage: new-repo <name> [--private]'+C.r);return;}const repo=await ptApiPost('https://api.github.com/user/repos',{name,private:isPrivate,auto_init:true,description:'Created via PhytoTerm'});ptL(C.green+'✓ Created '+(isPrivate?'🔒 ':'')+repo.full_name+C.r+'\r\n'+C.gray+repo.html_url+C.r);await ptCmdSetRepo(repo.full_name);}
+
+async function ptCmdSessions() {
+  try{const files=await ptApiGet('https://api.github.com/repos/'+PT.ptOwner+'/contents/sessions?ref=main');const sorted=files.filter(f=>f.name.endsWith('.enc')).sort((a,b)=>b.name.localeCompare(a.name)).slice(0,20);if(!sorted.length){ptL(C.gray+'No sessions yet.'+C.r);return;}ptL(C.b+C.white+'Saved sessions ('+sorted.length+'):'+C.r);sorted.forEach((f,i)=>ptL('  '+C.cyan+(i+1)+'.'+C.r+' '+f.name.replace('.enc','')+'  '+C.gray+ptFmtSize(f.size)+C.r));ptL(C.gray+'All sessions encrypted with your PAT.'+C.r);}catch(e){ptL(C.red+e.message+C.r);}
+}
+
+function ptSetModel(name) {
+  const a={sonnet:'claude-sonnet-4-6',claude:'claude-sonnet-4-6',deepseek:'deepseek/deepseek-r1-0528',r1:'deepseek/deepseek-r1-0528',nano:'openai/gpt-5.4-nano',gpt:'openai/gpt-5.4-nano',fast:'openai/gpt-5.4-nano'};
+  if(!name){ptL('Current: '+C.cyan+PT.model+C.r);return;}
+  PT.model=a[name.toLowerCase()]||name;
+  document.querySelectorAll('.pt-mpill').forEach(b=>b.classList.toggle('active',b.dataset.model===PT.model));
+  ptL(C.green+'Model → '+C.cyan+PT.model+C.r);
+}
+
+async function ptExit() {
+  ptL(''); ptL(C.gray+'Saving session…'+C.r); ptUpdateStatus('saving…');
+  await ptSaveContext();
+  const logPath=await ptSaveSessionLog();
+  ptL(C.green+'✓ Saved'+(logPath?' → '+logPath:'')+C.r);
+  ptL(C.gray+'Signing out…'+C.r);
+  await new Promise(r=>setTimeout(r,1200));
+  PT.busy=false;
+  ptSignOut();
+}
+
+// ── Help ──────────────────────────────────────────────────────────────────
+function ptHelp() {
+  const sections=[
+    ['Navigation',  [['ls [path]','List directory'],['cat <file>','Show file (JSON/CSV highlighted)'],['head/tail <file>','First/last 30 lines'],['cd <path>','Navigate'],['pwd','Current path'],['find <pat> [dir]','Find files'],['grep <pat> <file>','Search in file'],['wc <file>','Word/line/char count']]],
+    ['File ops',    [['create <file>','Create file'],['rm <file>','Delete file'],['mv <src> <dst>','Move/rename'],['cp <src> <dst>','Copy'],['diff <file>','Diff vs previous commit']]],
+    ['Repo & Git',  [['repos','All repos'],['repo <name>','Switch repo'],['branches','List branches'],['branch <name>','Switch branch'],['log [n]','Last n commits'],['status','Repo info + HEAD'],['issues [n]','Open issues'],['prs','Open pull requests'],['pr "title"','Create pull request'],['new-repo <n>','Create repo (--private)']]],
+    ['Sessions',    [['sessions','List encrypted session logs'],['open <url>','Open in browser'],['whoami','User + encrypted store'],['reset','Clear AI context'],['clear','Clear screen'],['exit','Save session + sign out']]],
+    ['AI',          [['/model sonnet|deepseek|nano','Switch AI model'],['<anything>','Ask Claude (multi-step)'],['/review <file>','Code review'],['/explain <file>','Explain file'],['/improve <file>','Rewrite & improve'],['/summarize [n]','Summarize commits'],['/todos','Find TODOs in repo'],['/audit','Security audit'],['/readme','Generate README']]],
+  ];
+  ptL('');
+  ptL(C.b+C.white+'PhytoTerm'+C.r+'  '+C.gray+(PT.ptOwner||'')+'  🔒 all-encrypted'+C.r);
+  ptL(C.gray+'Tab=autocomplete  ↑↓=history  Ctrl+R=search  Ctrl+C=cancel  Ctrl+L=clear'+C.r);
+  ptL(C.gray+'─'.repeat(56)+C.r);
+  sections.forEach(([title,cmds])=>{
+    ptL('  '+C.b+C.yellow+title+C.r);
+    cmds.forEach(([c,d])=>ptL('    '+C.cyan+c.padEnd(26)+C.r+C.gray+d+C.r));
+    ptL('');
+  });
+}
+
+// ── AI agentic loop ───────────────────────────────────────────────────────
+const PT_SYS='You are PhytoTerm, an AI dev assistant. Help build and maintain web apps via GitHub.\n\n'+
+  'Perform GitHub actions using EXACTLY ONE action block per response:\n'+
+  '<gh>{"action":"list_files","path":"src/"}</gh>\n'+
+  '<gh>{"action":"read_file","path":"index.html"}</gh>\n'+
+  '<gh>{"action":"write_file","path":"index.html","content":"FULL FILE CONTENT","message":"feat: change"}</gh>\n'+
+  '<gh>{"action":"delete_file","path":"old.txt","message":"chore: remove"}</gh>\n'+
+  '<gh>{"action":"get_commits","n":5}</gh>\n'+
+  '<gh>{"action":"create_issue","title":"T","body":"B"}</gh>\n\n'+
+  'Rules: one action per response; always write COMPLETE file content; plain terminal text output only.';
+
+async function ptAskClaude(userInput) {
+  PT.messages.push({role:'user',content:userInput});
+  let dotN=0;
+  const tick=()=>{ptClear();ptW(C.gray+'✦ '+['·','··','···','····'][dotN++%4]+C.r);};
+  tick(); const thinkId=setInterval(tick,350);
+  try {
+    for(let hop=0;hop<5;hop++){
+      if(!PT.busy){clearInterval(thinkId);ptClear();return;}
+      const msgs=[
+        {role:'user',content:PT_SYS+'\n\nContext: repo='+PT.repo+', branch='+PT.branch+', path=/'+(PT.path||'')+', user='+(PT.ghUser||'')},
+        {role:'assistant',content:'PhytoTerm ready. Connected to '+PT.repo+' ('+PT.branch+').'},
+        ...PT.messages,
+      ];
+      const result=await puter.ai.chat(msgs,{model:PT.model});
+      const text=(result&&result.message&&result.message.content&&result.message.content[0]&&result.message.content[0].text)||'';
+      PT.messages.push({role:'assistant',content:text});
+      const m=/<gh>([\s\S]*?)<\/gh>/.exec(text);
+      clearInterval(thinkId); ptClear();
+      const before=(m?text.slice(0,m.index):text).replace(/<gh>[\s\S]*?<\/gh>/g,'').trim();
+      if(before) ptW(before.replace(/\n/g,'\r\n')+'\r\n');
+      if(!m) break;
+      let actionResult='';
+      try{actionResult=await ptExecGhAction(JSON.parse(m[1]));}catch(e){actionResult='Error: '+e.message;}
+      const after=text.slice(m.index+m[0].length).replace(/<gh>[\s\S]*?<\/gh>/g,'').trim();
+      if(after) ptW(after.replace(/\n/g,'\r\n')+'\r\n');
+      PT.messages.push({role:'user',content:'[Result]: '+actionResult+'\n\nContinue.'});
+      ptLog('gh',actionResult.slice(0,120));
+      dotN=0; tick(); const tid2=setInterval(tick,350);
+      await new Promise(r=>setTimeout(r,80));
+      clearInterval(tid2);
+    }
+  } catch(e) {
+    clearInterval(thinkId); ptClear();
+    if((e.message||'').match(/sign|auth/i)){ptL(C.yellow+'Puter sign-in needed. A popup will open…'+C.r);try{await puter.auth.signIn();await ptAskClaude(userInput);return;}catch{}}
+    else ptL(C.red+'AI error: '+e.message+C.r);
+  }
+  ptLog('ai',(PT.messages[PT.messages.length-1]||{}).content?.slice(0,200)||'');
+  if(PT.messages.length>40) PT.messages=PT.messages.slice(-40);
+  ptSaveSessionState();
+}
+
+async function ptExecGhAction(action) {
+  const repo=action.repo||PT.repo, branch=action.branch||PT.branch;
+  const base='https://api.github.com/repos/'+repo;
+  switch(action.action){
+    case 'list_files':{const path=action.path||PT.path;ptL(C.gray+'✦ ls '+(path||'/')+C.r);const data=await ptApiGet(base+'/contents/'+path+'?ref='+branch);const items=Array.isArray(data)?data:[data];items.forEach(i=>i.type==='dir'?ptL(C.cyan+i.name+'/'+C.r):ptL(i.name+'  '+C.gray+ptFmtSize(i.size)+C.r));return items.map(i=>i.name+(i.type==='dir'?'/':'')).join(', ');}
+    case 'read_file':{ptL(C.gray+'✦ reading '+action.path+'…'+C.r);const data=await ptApiGet(base+'/contents/'+action.path+'?ref='+branch);const content=decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));return 'Contents of '+action.path+' ('+content.split('\n').length+' lines):\n'+content;}
+    case 'write_file':{ptL(C.gray+'✦ writing '+action.path+'…'+C.r);let sha;try{sha=(await ptApiGet(base+'/contents/'+action.path+'?ref='+branch)).sha;}catch{}const msg=action.message||'chore: update '+action.path;const body={message:msg,content:btoa(unescape(encodeURIComponent(action.content))),branch};if(sha)body.sha=sha;await ptApiPut(base+'/contents/'+action.path,body);ptL(C.green+'✓ Committed: "'+msg+'"'+C.r);return 'Wrote and committed '+action.path+': "'+msg+'"';}
+    case 'delete_file':{ptL(C.gray+'✦ deleting '+action.path+'…'+C.r);const ex=await ptApiGet(base+'/contents/'+action.path+'?ref='+branch);const msg=action.message||'chore: delete '+action.path;await ptApiDel(base+'/contents/'+action.path,{message:msg,sha:ex.sha,branch});ptL(C.green+'✓ Deleted '+action.path+C.r);return 'Deleted '+action.path;}
+    case 'get_commits':{const n=action.n||10;ptL(C.gray+'✦ fetching commits…'+C.r);const cs=await ptApiGet(base+'/commits?ref='+branch+'&per_page='+n);cs.forEach(c=>ptL(C.yellow+c.sha.slice(0,7)+C.r+' '+c.commit.message.split('\n')[0]));return cs.map(c=>c.sha.slice(0,7)+' '+c.commit.message.split('\n')[0]).join('\n');}
+    case 'create_issue':{ptL(C.gray+'✦ creating issue…'+C.r);const issue=await ptApiPost('https://api.github.com/repos/'+repo+'/issues',{title:action.title,body:action.body||''});ptL(C.green+'✓ Issue #'+issue.number+': '+issue.title+C.r);return 'Created issue #'+issue.number;}
+    default: return 'Unknown action: '+action.action;
+  }
+}
+
+// ── Auto-login if PAT in sessionStorage ───────────────────────────────────
+if(_PAT) {
+  (async()=>{
+    try{
+      _KEY=await deriveKey(_PAT);
+      const r=await fetch('https://api.github.com/user',{headers:{Authorization:'token '+_PAT}});
+      if(r.ok){document.getElementById('pt-login').style.display='none';document.getElementById('pt-app').style.display='flex';await ptInit();}
+      else{sessionStorage.removeItem('pt_pat');_PAT='';}
+    }catch{sessionStorage.removeItem('pt_pat');_PAT='';}
+  })();
+}
+</script>
+</body>
+</html>

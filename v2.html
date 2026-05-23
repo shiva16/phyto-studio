@@ -3393,12 +3393,22 @@ async function ptGhBoot(hadSessionState){
 
 async function ptEnsurePrivateRepo(){
   try{
-    await ptApiGet('https://api.github.com/repos/'+PT.ptOwner);
+    const repo=await ptApiGet('https://api.github.com/repos/'+PT.ptOwner);
+    // If it was created private, silently patch to public (all content is encrypted anyway)
+    if(repo.private){
+      try{
+        await fetch('https://api.github.com/repos/'+PT.ptOwner,{
+          method:'PATCH',
+          headers:{Authorization:'token '+S.pat,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},
+          body:JSON.stringify({private:false}),
+        });
+      }catch{}
+    }
   }catch{
-    ptL(C.gray+'  Creating private repo '+C.cyan+PT_REPO+C.gray+'…'+C.r);
+    ptL(C.gray+'  Creating repo '+C.cyan+PT_REPO+C.gray+' (public, all-encrypted)…'+C.r);
     await ptApiPost('https://api.github.com/user/repos',{
-      name:PT_REPO, private:true,
-      description:'PhytoTerm encrypted session store — do not edit manually',
+      name:PT_REPO, private:false,
+      description:'PhytoTerm encrypted data store — all files are AES-256-GCM ciphertext',
       auto_init:true,
     });
     ptL(C.green+'  ✓ Created '+PT.ptOwner+C.r);
