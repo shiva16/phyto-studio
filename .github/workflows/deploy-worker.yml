@@ -21,7 +21,7 @@ jobs:
           workingDirectory: worker
 
       - name: Push GROQ_API_KEY secret
-        if: ${{ secrets.GROQ_API_KEY != '' }}
+        continue-on-error: true
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.studio_cf }}
