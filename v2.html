@@ -3266,8 +3266,8 @@ function pvGoto(i){_pvIdx=i;pvRender();}
 const PT_REPO = 'phyto-term';
 const NIM_BASE = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const NIM_MODEL_IDS = {
-  deepseek: 'deepseek-ai/deepseek-v3',
-  qwen:     'qwen/qwen3-235b-a22b',
+  deepseek: 'deepseek-ai/deepseek-v4-flash',
+  qwen:     'qwen/qwen3.5-122b-a10b',
   coder:    'qwen/qwen3-coder-480b-a35b-instruct',
 };
 
@@ -3277,7 +3277,7 @@ const PT = {
   repo: GH_OWNER + '/phyto-studio',
   branch: 'main', path: '',
   model: 'fast',
-  nimKey: '', nimModel: 'deepseek-ai/deepseek-v3',
+  nimKey: '', nimModel: 'deepseek-ai/deepseek-v4-flash',
   messages: [],
   transcript: [], sessionStart: null,
   inputBuf: '', cmdHistory: [], histIdx: -1,
@@ -4083,17 +4083,17 @@ function ptCmdTokens(){
   ptL('');ptL(C.b+C.white+'Token usage — this session'+C.r);ptL(C.gray+'─'.repeat(40)+C.r);
   ptL('  Calls: '+C.cyan+calls+C.r+'   Input: '+C.green+input.toLocaleString()+C.r+'   Output: '+C.blue+output.toLocaleString()+C.r);
   ptL('');ptL(C.b+'Cost estimates (NIM free = $0):'+C.r);
-  const models={fast:{n:'Groq 8b',in:0.05,out:0.08,l:'~unlimited'},quality:{n:'Groq 70b',in:0.59,out:0.79,l:'1k/day'},deepseek:{n:'NIM deepseek-v3',in:0.14,out:0.28,l:'40 RPM'},qwen:{n:'NIM qwen3-235b',in:0.20,out:0.60,l:'40 RPM'},coder:{n:'NIM qwen3-coder-480b',in:0.22,out:0.66,l:'40 RPM'}};
+  const models={fast:{n:'Groq 8b',in:0.05,out:0.08,l:'~unlimited'},quality:{n:'Groq 70b',in:0.59,out:0.79,l:'1k/day'},deepseek:{n:'NIM deepseek-v4-flash',in:0.14,out:0.28,l:'40 RPM'},qwen:{n:'NIM qwen3.5-122b',in:0.20,out:0.60,l:'40 RPM'},coder:{n:'NIM qwen3-coder-480b',in:0.22,out:0.66,l:'40 RPM'}};
   Object.entries(models).forEach(([id,m])=>{const cost=((input/1e6)*m.in+(output/1e6)*m.out);const cur=id===PT.model;ptL('  '+(cur?C.green+'→ '+C.r:'  ')+C.cyan+m.n.padEnd(22)+C.r+'$'+cost.toFixed(5)+'  '+C.gray+m.l+C.r);});
-  ptL('');ptL(C.gray+'SWE-bench: Coder 69.6% · DeepSeek ~72% · Qwen 61.7% · Groq 70b ~60%'+C.r);
+  ptL('');ptL(C.gray+'SWE-bench: Coder 69.6% · DeepSeek V4 ~72% · Qwen 3.5 61.7% · Groq 70b ~60%'+C.r);
 }
 
 // ── Model picker popup ─────────────────────────────────────────────────────
 const MODEL_INFO={
   fast:{badge:'Groq',badgeClass:'groq',name:'llama-3.1-8b-instant',ctx:'32K',limit:'~unlimited',swe:null,good:['Instant answers while you build — no wait','Navigation: ls, cat, grep, log, status','Short explanations & quick lookups','Burning zero limit while staying in flow'],avoid:'Full feature builds or anything needing deep reasoning'},
   quality:{badge:'Groq',badgeClass:'groq',name:'llama-3.3-70b-versatile',ctx:'32K',limit:'1,000 req/day',swe:'~60%',good:['Planning sessions & architecture discussions','Explaining what a module or pattern does','Moderate feature scaffolding','Fallback when NIM key not set'],avoid:'Long build sessions — 1k/day cap runs out fast with agentic loops'},
-  deepseek:{badge:'NIM',badgeClass:'nim',name:'deepseek-ai/deepseek-v3',ctx:'64K',limit:'40 RPM free',swe:'~72%',good:['Writing complete app files from scratch','JavaScript, HTML, CSS — deeply trained on web patterns','Building features like notes.tcplants or quant-onco modules','Best all-round free model for this kind of work'],avoid:'Files over ~50K tokens — switch to Qwen or Coder for those'},
-  qwen:{badge:'NIM',badgeClass:'nim',name:'qwen/qwen3-235b-a22b',ctx:'262K',limit:'40 RPM free',swe:'61.7%',good:['Reading an entire codebase in one pass (262K ctx)','Strict instruction following — 95% IFEval','Refactoring across many interconnected files','When you need the model to hold a complex constraint throughout'],avoid:'Pure code generation — DeepSeek edges it; use this for large context work'},
+  deepseek:{badge:'NIM',badgeClass:'nim',name:'deepseek-ai/deepseek-v4-flash',ctx:'64K',limit:'40 RPM free',swe:'~72%',good:['Writing complete app files from scratch','JavaScript, HTML, CSS — deeply trained on web patterns','Building features like notes.tcplants or quant-onco modules','Best all-round free model for this kind of work'],avoid:'Files over ~50K tokens — switch to Qwen or Coder for those'},
+  qwen:{badge:'NIM',badgeClass:'nim',name:'qwen/qwen3.5-122b-a10b',ctx:'131K',limit:'40 RPM free',swe:'61.7%',good:['Reading large codebases in one pass (131K ctx)','Strict instruction following — great for complex prompts','Refactoring across many interconnected files','When you need the model to hold a complex constraint throughout'],avoid:'Pure code generation — DeepSeek V4 or Coder edges it; use this for large context work'},
   coder:{badge:'NIM',badgeClass:'nim',name:'qwen/qwen3-coder-480b-a35b-instruct',ctx:'256K',limit:'40 RPM free',swe:'69.6%',good:['Agentic build loops — read → plan → write → verify chains','Trained on 7.5T tokens, 70% code — knows web app patterns cold','Best free model for the PhytoTerm <gh> action workflow','Building full single-file apps (tcplants pattern, phyto-studio style)'],avoid:'Nothing specific — purpose-built for exactly this kind of work'},
 };
 
@@ -4159,8 +4159,8 @@ function ptSetModel(name){
     ptL(C.b+'Models:'+C.r);
     ptL('  '+C.cyan+'fast     '+C.r+'Groq · llama-3.1-8b-instant   ~unlimited');
     ptL('  '+C.cyan+'quality  '+C.r+'Groq · llama-3.3-70b-versatile 1k req/day');
-    ptL('  '+C.cyan+'deepseek '+C.r+'NIM  · deepseek-v3             40 RPM  '+nimOk);
-    ptL('  '+C.cyan+'qwen     '+C.r+'NIM  · qwen3-235b-a22b         40 RPM  '+nimOk+'  262K ctx');
+    ptL('  '+C.cyan+'deepseek '+C.r+'NIM  · deepseek-v4-flash        40 RPM  '+nimOk);
+    ptL('  '+C.cyan+'qwen     '+C.r+'NIM  · qwen3.5-122b-a10b       40 RPM  '+nimOk+'  131K ctx');
     ptL('  '+C.cyan+'coder    '+C.r+'NIM  · qwen3-coder-480b        40 RPM  '+nimOk);
     ptL(C.gray+'  Current: '+C.white+PT.model+C.r);
     return;
@@ -4168,7 +4168,7 @@ function ptSetModel(name){
   PT.model=aliases[name.toLowerCase()]||name;
   document.querySelectorAll('.pt-mpill').forEach(b=>b.classList.toggle('active',b.dataset.model===PT.model));
   ptUpdateTokenBar();
-  const labels={fast:'Groq llama-3.1-8b',quality:'Groq llama-3.3-70b',deepseek:'NIM deepseek-ai/deepseek-v3',qwen:'NIM qwen/qwen3-235b-a22b',coder:'NIM qwen/qwen3-coder-480b'};
+  const labels={fast:'Groq llama-3.1-8b',quality:'Groq llama-3.3-70b',deepseek:'NIM deepseek-ai/deepseek-v4-flash',qwen:'NIM qwen/qwen3.5-122b-a10b',coder:'NIM qwen/qwen3-coder-480b'};
   ptL(C.green+'Model → '+C.cyan+(labels[PT.model]||PT.model)+C.r);
   if(NIM_MODEL_IDS[PT.model]&&!PT.nimKey) ptL(C.yellow+'NIM key not set → run: config nim <nvapi-key>'+C.r);
 }

@@ -830,8 +830,8 @@ function ptCmdTokens() {
   const models={
     fast:    {n:'Groq llama-3.1-8b',        in:0.05, out:0.08, limit:'~unlimited · 500k TPM'},
     quality: {n:'Groq llama-3.3-70b',       in:0.59, out:0.79, limit:'1,000 req/day · 6k TPM'},
-    deepseek:{n:'NIM deepseek-v3',           in:0.14, out:0.28, limit:'40 RPM · no daily cap'},
-    qwen:    {n:'NIM qwen3-235b-a22b',       in:0.20, out:0.60, limit:'40 RPM · 262K ctx'},
+    deepseek:{n:'NIM deepseek-v4-flash',      in:0.14, out:0.28, limit:'40 RPM · no daily cap'},
+    qwen:    {n:'NIM qwen3.5-122b-a10b',     in:0.20, out:0.60, limit:'40 RPM · 131K ctx'},
     coder:   {n:'NIM qwen3-coder-480b-a35b', in:0.22, out:0.66, limit:'40 RPM · 256K ctx'},
   };
   Object.entries(models).forEach(([id,m])=>{
@@ -840,7 +840,7 @@ function ptCmdTokens() {
     ptL('  '+(cur?C.green+'→ '+C.r:'  ')+C.cyan+m.n.padEnd(22)+C.r+'$'+cost.toFixed(5)+'  '+C.gray+m.limit+C.r);
   });
   ptL('');
-  ptL(C.gray+'SWE-bench: Sonnet 79.6% · Qwen3 61.7% · DeepSeek V3 ~72% · Groq 70b ~60%'+C.r);
+  ptL(C.gray+'SWE-bench: Sonnet 79.6% · Coder 69.6% · DeepSeek V4 ~72% · Groq 70b ~60%'+C.r);
   ptL(C.gray+'Input counts without API usage data are estimated (~4 chars/tok).'+C.r);
 }
 
@@ -872,7 +872,7 @@ const MODEL_INFO = {
   },
   deepseek: {
     badge:'NIM', badgeClass:'nim',
-    name:'deepseek-ai/deepseek-v3',
+    name:'deepseek-ai/deepseek-v4-flash',
     ctx:'64K', limit:'40 RPM free', swe:'~72%',
     good:[
       'Writing complete app files from scratch',
@@ -884,15 +884,15 @@ const MODEL_INFO = {
   },
   qwen: {
     badge:'NIM', badgeClass:'nim',
-    name:'qwen/qwen3-235b-a22b',
-    ctx:'262K', limit:'40 RPM free', swe:'61.7%',
+    name:'qwen/qwen3.5-122b-a10b',
+    ctx:'131K', limit:'40 RPM free', swe:'61.7%',
     good:[
-      'Reading an entire codebase in one pass (262K ctx)',
-      'Strict instruction following — 95% IFEval, best at multi-part specs',
+      'Reading large codebases in one pass (131K ctx)',
+      'Strict instruction following — great for complex multi-part specs',
       'Refactoring across many interconnected files',
       'When you need the model to hold a complex constraint throughout',
     ],
-    avoid:'Pure code generation — DeepSeek edges it there; use this for large context work',
+    avoid:'Pure code generation — DeepSeek V4 or Coder edges it; use this for large context work',
   },
   coder: {
     badge:'NIM', badgeClass:'nim',
@@ -1005,8 +1005,8 @@ function ptSetModel(name) {
     ptL(C.b+'Models:'+C.r);
     ptL('  '+C.cyan+'fast     '+C.r+'Groq · llama-3.1-8b-instant   · ~unlimited');
     ptL('  '+C.cyan+'quality  '+C.r+'Groq · llama-3.3-70b-versatile · 1,000 req/day');
-    ptL('  '+C.cyan+'deepseek '+C.r+'NIM  · deepseek-ai/deepseek-v3  · 40 RPM free  '+nimOk);
-    ptL('  '+C.cyan+'qwen     '+C.r+'NIM  · qwen/qwen3-235b-a22b     · 40 RPM free  '+nimOk+'  262K ctx');
+    ptL('  '+C.cyan+'deepseek '+C.r+'NIM  · deepseek-ai/deepseek-v4-flash  · 40 RPM free  '+nimOk);
+    ptL('  '+C.cyan+'qwen     '+C.r+'NIM  · qwen/qwen3.5-122b-a10b        · 40 RPM free  '+nimOk+'  131K ctx');
     ptL(C.gray+'  Current: '+C.white+PT.model+C.r);
     if(!PT.nimKey) ptL(C.yellow+'  NIM key missing → config nim <nvapi-key>'+C.r);
     return;
@@ -1014,7 +1014,7 @@ function ptSetModel(name) {
   PT.model=aliases[name.toLowerCase()]||name;
   document.querySelectorAll('.pt-mpill').forEach(b=>b.classList.toggle('active',b.dataset.model===PT.model));
   ptUpdateTokenBar();
-  const labels={fast:'Groq llama-3.1-8b',quality:'Groq llama-3.3-70b',deepseek:'NIM deepseek-ai/deepseek-v3',qwen:'NIM qwen/qwen3-235b-a22b'};
+  const labels={fast:'Groq llama-3.1-8b',quality:'Groq llama-3.3-70b',deepseek:'NIM deepseek-ai/deepseek-v4-flash',qwen:'NIM qwen/qwen3.5-122b-a10b',coder:'NIM qwen/qwen3-coder-480b'};
   ptL(C.green+'Model → '+C.cyan+(labels[PT.model]||PT.model)+C.r);
   if((PT.model==='deepseek'||PT.model==='qwen')&&!PT.nimKey)
     ptL(C.yellow+'NIM key not set → run: config nim <nvapi-key>'+C.r);
@@ -1106,8 +1106,8 @@ async function ptCallGroq(messages) {
 }
 
 const NIM_MODEL_IDS = {
-  deepseek: 'deepseek-ai/deepseek-v3',
-  qwen:     'qwen/qwen3-235b-a22b',
+  deepseek: 'deepseek-ai/deepseek-v4-flash',
+  qwen:     'qwen/qwen3.5-122b-a10b',
   coder:    'qwen/qwen3-coder-480b-a35b-instruct',
 };
 
