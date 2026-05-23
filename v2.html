@@ -11,7 +11,6 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
 <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
-<script src="https://js.puter.com/v2/"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -363,6 +362,26 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-bottom:2px 
 .pt-mpill{padding:2px 9px;border-radius:4px;border:none;background:transparent;color:#8b949e;font-size:11px;cursor:pointer;transition:all .1s;font-family:system-ui,sans-serif;white-space:nowrap}
 .pt-mpill.active{background:#388bfd22;color:#58a6ff}
 .pt-mpill:hover:not(.active){background:#30363d;color:#c9d1d9}
+#pt-model-popup{position:fixed;z-index:9999;background:#161b22;border:1px solid #30363d;border-radius:10px;width:290px;box-shadow:0 12px 32px rgba(0,0,0,0.5);font-family:system-ui,sans-serif;font-size:12px;color:#c9d1d9;animation:ptPopIn .12s ease}
+@keyframes ptPopIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.pt-popup-hdr{padding:12px 14px 10px;border-bottom:1px solid #21262d}
+.pt-popup-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;padding:1px 6px;border-radius:4px;margin-bottom:6px}
+.pt-popup-badge.groq{background:#1a3a2a;color:#3fb950}.pt-popup-badge.nim{background:#1a2a3a;color:#58a6ff}
+.pt-popup-name{font-size:13px;font-weight:700;color:#e6edf3;line-height:1.3;margin-bottom:3px}
+.pt-popup-meta{font-size:11px;color:#6e7681;display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+.pt-popup-meta .swe{color:#d29922}
+.pt-popup-body{padding:10px 14px}
+.pt-popup-section{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6e7681;margin-bottom:5px}
+.pt-popup-list{list-style:none;margin:0 0 10px;padding:0}
+.pt-popup-list li{padding:2px 0;font-size:12px;line-height:1.5}
+.pt-popup-list li::before{content:'✓  ';color:#3fb950;font-size:11px}
+.pt-popup-avoid{font-size:11px;color:#6e7681;margin-bottom:12px;line-height:1.5;padding:6px 8px;background:#0d1117;border-radius:5px;border-left:2px solid #30363d}
+.pt-popup-warn{font-size:11px;color:#d29922;margin-bottom:10px;padding:5px 8px;background:#1c1a0d;border-radius:5px}
+.pt-popup-btns{display:flex;gap:8px}
+.pt-popup-use{flex:1;padding:7px;border-radius:6px;border:none;background:#238636;color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s}
+.pt-popup-use:hover{background:#2ea043}
+.pt-popup-cancel{padding:7px 14px;border-radius:6px;border:1px solid #30363d;background:transparent;color:#8b949e;font-size:12px;cursor:pointer;transition:all .15s}
+.pt-popup-cancel:hover{background:#21262d;color:#c9d1d9}
 .pt-hdr-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
 .pt-user-lbl{font-size:11px;color:#6e7681;font-family:system-ui,sans-serif}
 .pt-close-btn{padding:4px 10px;border-radius:6px;border:1px solid #30363d;background:transparent;color:#8b949e;font-size:11px;cursor:pointer;font-family:system-ui,sans-serif;transition:all .1s;white-space:nowrap}
@@ -388,9 +407,17 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-bottom:2px 
       <option value="main">main</option>
     </select>
     <div class="pt-model-pills">
-      <button class="pt-mpill active" data-model="claude-sonnet-4-6" onclick="ptSetModel('claude-sonnet-4-6')">Sonnet</button>
-      <button class="pt-mpill" data-model="deepseek/deepseek-r1-0528" onclick="ptSetModel('deepseek/deepseek-r1-0528')">DeepSeek</button>
-      <button class="pt-mpill" data-model="openai/gpt-5.4-nano" onclick="ptSetModel('openai/gpt-5.4-nano')">GPT nano</button>
+      <button class="pt-mpill active" data-model="fast"     onclick="ptShowModelPicker('fast',this)">Fast</button>
+      <button class="pt-mpill"        data-model="quality"  onclick="ptShowModelPicker('quality',this)">Quality</button>
+      <button class="pt-mpill"        data-model="deepseek" onclick="ptShowModelPicker('deepseek',this)">DeepSeek</button>
+      <button class="pt-mpill"        data-model="qwen"     onclick="ptShowModelPicker('qwen',this)">Qwen 3.5</button>
+      <button class="pt-mpill"        data-model="coder"    onclick="ptShowModelPicker('coder',this)">Coder</button>
+    </div>
+    <div id="pt-token-bar" style="display:none;align-items:center;gap:5px;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:3px 9px;font-size:11px;font-family:system-ui,sans-serif;white-space:nowrap;flex-shrink:0" title="Token usage this session">
+      <span style="color:#3fb950">↑</span><span id="pt-tok-in" style="color:#c9d1d9">0</span>
+      <span style="color:#8b949e;margin:0 2px">·</span>
+      <span style="color:#58a6ff">↓</span><span id="pt-tok-out" style="color:#c9d1d9">0</span>
+      <span style="color:#6e7681;margin-left:4px" id="pt-tok-cost"></span>
     </div>
     <div class="pt-hdr-right">
       <span class="pt-user-lbl" id="pt-user-lbl"></span>
@@ -400,7 +427,7 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-bottom:2px 
   <div id="pt-xterm"></div>
   <div id="pt-statusbar">
     <span id="pt-status">ready</span>
-    <div class="pt-status-right"><span style="color:#3fb950">🔒 phyto-term</span></div>
+    <div class="pt-status-right"><span style="color:#3fb950">🔒 phyto-term · all-encrypted</span></div>
   </div>
 </div>
 
@@ -3226,21 +3253,25 @@ function pvGoto(i){_pvIdx=i;pvRender();}
 
 // ===================== PHYTOTERM =====================
 const PT_REPO = 'phyto-term';
+const NIM_BASE = 'https://integrate.api.nvidia.com/v1/chat/completions';
+const NIM_MODEL_IDS = {
+  deepseek: 'deepseek-ai/deepseek-v3',
+  qwen:     'qwen/qwen3-235b-a22b',
+  coder:    'qwen/qwen3-coder-480b-a35b-instruct',
+};
 
 const PT = {
   open: false, inited: false,
   term: null, fitAddon: null,
-  // Context (persisted across sessions via phyto-term repo + sessionStorage)
   repo: GH_OWNER + '/phyto-studio',
   branch: 'main', path: '',
-  model: 'claude-sonnet-4-6',
-  messages: [],       // AI conversation history
-  // Session
-  transcript: [],     // log entries pushed on exit
-  sessionStart: null,
-  // Runtime
+  model: 'fast',
+  nimKey: '', nimModel: 'deepseek-ai/deepseek-v3',
+  messages: [],
+  transcript: [], sessionStart: null,
   inputBuf: '', cmdHistory: [], histIdx: -1,
   busy: false, ghUser: null, ptOwner: null,
+  usage: { input: 0, output: 0, calls: 0 },
 };
 
 // ANSI color helpers
@@ -3284,7 +3315,8 @@ function ptSaveSessionState(){
   try{
     sessionStorage.setItem('pt_state',JSON.stringify({
       repo:PT.repo, branch:PT.branch, path:PT.path, model:PT.model,
-      messages:PT.messages.slice(-40),
+      messages:PT.messages.slice(-40), usage:PT.usage,
+      nimKey:PT.nimKey, nimModel:PT.nimModel,
     }));
   }catch{}
 }
@@ -3297,6 +3329,9 @@ function ptRestoreSessionState(){
     PT.repo=s.repo||PT.repo; PT.branch=s.branch||PT.branch;
     PT.path=s.path||''; PT.model=s.model||PT.model;
     PT.messages=s.messages||[];
+    if(s.usage) PT.usage=s.usage;
+    if(s.nimKey) PT.nimKey=s.nimKey;
+    if(s.nimModel) PT.nimModel=s.nimModel;
     return true;
   }catch{return false;}
 }
@@ -3340,17 +3375,11 @@ async function ptInit(){
   PT.inited=true;
   PT.sessionStart=new Date().toISOString();
 
-  // Re-auth Puter if session dropped when page regains focus
-  document.addEventListener('visibilitychange',()=>{
-    if(!document.hidden&&PT.inited&&typeof puter!=='undefined'){
-      try{ if(!puter.auth.isSignedIn()) puter.auth.signIn().catch(()=>{}); }catch{}
-    }
-  });
-
-  ptL(C.bgreen+C.b+'  PhytoTerm'+C.r+C.gray+'  v1 — encrypted AI dev terminal'+C.r);
+  ptL(C.bgreen+C.b+'  PhytoTerm'+C.r+C.gray+'  Groq + NIM · all-encrypted'+C.r);
   ptL(C.gray+'  Booting…'+C.r);
 
   const hadState=ptRestoreSessionState();
+  ptUpdateTokenBar();
   await ptGhBoot(hadState);
 
   ptL('');
@@ -3418,7 +3447,13 @@ async function ptEnsurePrivateRepo(){
 async function ptLoadContext(){
   try{
     const raw=await ptPrivateGet('context/state.enc');
-    if(raw){ const s=JSON.parse(await aesDecrypt(raw)); PT.repo=s.repo||PT.repo; PT.branch=s.branch||PT.branch; PT.path=s.path||''; PT.model=s.model||PT.model; }
+    if(raw){
+      const s=JSON.parse(await aesDecrypt(raw));
+      PT.repo=s.repo||PT.repo; PT.branch=s.branch||PT.branch;
+      PT.path=s.path||''; PT.model=s.model||PT.model;
+      if(s.nimKey) PT.nimKey=s.nimKey;
+      if(s.nimModel) PT.nimModel=s.nimModel;
+    }
   }catch{}
   try{
     const raw=await ptPrivateGet('context/conversation.enc');
@@ -3427,7 +3462,7 @@ async function ptLoadContext(){
 }
 
 async function ptSaveContext(){
-  const state=JSON.stringify({repo:PT.repo,branch:PT.branch,path:PT.path,model:PT.model});
+  const state=JSON.stringify({repo:PT.repo,branch:PT.branch,path:PT.path,model:PT.model,nimKey:PT.nimKey,nimModel:PT.nimModel});
   await ptPrivatePut('context/state.enc',await aesEncrypt(state),'chore: update state');
   const conv=JSON.stringify(PT.messages.slice(-40));
   await ptPrivatePut('context/conversation.enc',await aesEncrypt(conv),'chore: update context');
@@ -3584,6 +3619,8 @@ async function ptRun(cmd){
       case 'new-repo':  await ptCmdNewRepo(args[0],args.includes('--private')); break;
       /* Sessions */
       case 'sessions':  await ptCmdSessions(); break;
+      case 'tokens': case 'usage': ptCmdTokens(); break;
+      case 'config':  await ptCmdConfig(args[0],args.slice(1).join(' ')); break;
       /* AI shortcuts */
       case '/review':   await ptAskClaude('Review this file and give detailed feedback: '+rest); break;
       case '/explain':  await ptAskClaude('Explain what this file does in detail: '+rest); break;
@@ -3690,7 +3727,7 @@ async function ptCmdBranches(){
 }
 
 async function ptCmdLog(n){
-  const cs=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/commits?ref='+PT.branch+'&per_page='+n);
+  const cs=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/commits?sha='+PT.branch+'&per_page='+n);
   cs.forEach(c=>{
     const sha=c.sha.slice(0,7);
     const msg=c.commit.message.split('\n')[0];
@@ -3776,7 +3813,7 @@ async function ptCmdStatus(){
   // Show uncommitted-like status by comparing latest commit tree with HEAD
   ptL(C.gray+'Repo: '+C.cyan+PT.repo+C.r+'  branch: '+C.cyan+PT.branch+C.r);
   try{
-    const cs=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/commits?ref='+PT.branch+'&per_page=1');
+    const cs=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/commits?sha='+PT.branch+'&per_page=1');
     if(cs.length){ const c=cs[0]; ptL(C.gray+'HEAD: '+C.yellow+c.sha.slice(0,7)+C.r+' '+c.commit.message.split('\n')[0]); }
     const branches=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/branches');
     ptL(C.gray+'Branches ('+branches.length+'): '+branches.map(b=>b.name===PT.branch?C.green+b.name+C.r:b.name).join(', '));
@@ -3787,7 +3824,7 @@ async function ptCmdDiff(file){
   if(!file){ptL(C.gray+'Usage: diff <file>'+C.r);return;}
   const path=ptResolvePath(file);
   try{
-    const cs=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/commits?ref='+PT.branch+'&per_page=2&path='+path);
+    const cs=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/commits?sha='+PT.branch+'&per_page=2&path='+path);
     if(cs.length<2){ptL(C.gray+'Only one commit for this file.'+C.r);return;}
     const old=cs[1].sha; const cur=cs[0].sha;
     // Get compare
@@ -4014,12 +4051,117 @@ async function ptExit(){
   closePhytoTerm();
 }
 
+// ── Token bar ─────────────────────────────────────────────────────────────
+function ptFmtTok(n){return n>=1000?(n/1000).toFixed(1)+'k':String(n);}
+function ptUpdateTokenBar(){
+  const bar=document.getElementById('pt-token-bar');
+  if(!bar)return;
+  if(PT.usage.calls===0){bar.style.display='none';return;}
+  bar.style.display='flex';
+  document.getElementById('pt-tok-in').textContent=ptFmtTok(PT.usage.input);
+  document.getElementById('pt-tok-out').textContent=ptFmtTok(PT.usage.output);
+  const rates={fast:{in:0.05,out:0.08},quality:{in:0.59,out:0.79},deepseek:{in:0.14,out:0.28},qwen:{in:0.20,out:0.60},coder:{in:0.22,out:0.66}};
+  const r=rates[PT.model]||{in:0.05,out:0.08};
+  const cost=((PT.usage.input/1e6)*r.in+(PT.usage.output/1e6)*r.out);
+  const el=document.getElementById('pt-tok-cost');
+  if(el)el.textContent=cost>0.001?'~$'+cost.toFixed(4):'';
+}
+
+function ptCmdTokens(){
+  const {input,output,calls}=PT.usage;
+  ptL('');ptL(C.b+C.white+'Token usage — this session'+C.r);ptL(C.gray+'─'.repeat(40)+C.r);
+  ptL('  Calls: '+C.cyan+calls+C.r+'   Input: '+C.green+input.toLocaleString()+C.r+'   Output: '+C.blue+output.toLocaleString()+C.r);
+  ptL('');ptL(C.b+'Cost estimates (NIM free = $0):'+C.r);
+  const models={fast:{n:'Groq 8b',in:0.05,out:0.08,l:'~unlimited'},quality:{n:'Groq 70b',in:0.59,out:0.79,l:'1k/day'},deepseek:{n:'NIM deepseek-v3',in:0.14,out:0.28,l:'40 RPM'},qwen:{n:'NIM qwen3-235b',in:0.20,out:0.60,l:'40 RPM'},coder:{n:'NIM qwen3-coder-480b',in:0.22,out:0.66,l:'40 RPM'}};
+  Object.entries(models).forEach(([id,m])=>{const cost=((input/1e6)*m.in+(output/1e6)*m.out);const cur=id===PT.model;ptL('  '+(cur?C.green+'→ '+C.r:'  ')+C.cyan+m.n.padEnd(22)+C.r+'$'+cost.toFixed(5)+'  '+C.gray+m.l+C.r);});
+  ptL('');ptL(C.gray+'SWE-bench: Coder 69.6% · DeepSeek ~72% · Qwen 61.7% · Groq 70b ~60%'+C.r);
+}
+
+// ── Model picker popup ─────────────────────────────────────────────────────
+const MODEL_INFO={
+  fast:{badge:'Groq',badgeClass:'groq',name:'llama-3.1-8b-instant',ctx:'32K',limit:'~unlimited',swe:null,good:['Instant answers while you build — no wait','Navigation: ls, cat, grep, log, status','Short explanations & quick lookups','Burning zero limit while staying in flow'],avoid:'Full feature builds or anything needing deep reasoning'},
+  quality:{badge:'Groq',badgeClass:'groq',name:'llama-3.3-70b-versatile',ctx:'32K',limit:'1,000 req/day',swe:'~60%',good:['Planning sessions & architecture discussions','Explaining what a module or pattern does','Moderate feature scaffolding','Fallback when NIM key not set'],avoid:'Long build sessions — 1k/day cap runs out fast with agentic loops'},
+  deepseek:{badge:'NIM',badgeClass:'nim',name:'deepseek-ai/deepseek-v3',ctx:'64K',limit:'40 RPM free',swe:'~72%',good:['Writing complete app files from scratch','JavaScript, HTML, CSS — deeply trained on web patterns','Building features like notes.tcplants or quant-onco modules','Best all-round free model for this kind of work'],avoid:'Files over ~50K tokens — switch to Qwen or Coder for those'},
+  qwen:{badge:'NIM',badgeClass:'nim',name:'qwen/qwen3-235b-a22b',ctx:'262K',limit:'40 RPM free',swe:'61.7%',good:['Reading an entire codebase in one pass (262K ctx)','Strict instruction following — 95% IFEval','Refactoring across many interconnected files','When you need the model to hold a complex constraint throughout'],avoid:'Pure code generation — DeepSeek edges it; use this for large context work'},
+  coder:{badge:'NIM',badgeClass:'nim',name:'qwen/qwen3-coder-480b-a35b-instruct',ctx:'256K',limit:'40 RPM free',swe:'69.6%',good:['Agentic build loops — read → plan → write → verify chains','Trained on 7.5T tokens, 70% code — knows web app patterns cold','Best free model for the PhytoTerm <gh> action workflow','Building full single-file apps (tcplants pattern, phyto-studio style)'],avoid:'Nothing specific — purpose-built for exactly this kind of work'},
+};
+
+let _popupClose=null;
+function ptShowModelPicker(model,el){
+  const existing=document.getElementById('pt-model-popup');
+  if(existing){existing.remove();if(_popupClose){document.removeEventListener('click',_popupClose);_popupClose=null;}if(existing.dataset.model===model)return;}
+  const info=MODEL_INFO[model];if(!info){ptSetModel(model);return;}
+  const nimModels=['deepseek','qwen','coder'];
+  const needsKey=nimModels.includes(model)&&!PT.nimKey;
+  const isCurrent=PT.model===model;
+  const popup=document.createElement('div');
+  popup.id='pt-model-popup';popup.dataset.model=model;
+  const label={coder:'Qwen3 Coder',qwen:'Qwen 3.5',deepseek:'DeepSeek V3',quality:'Quality 70B',fast:'Fast 8B'}[model]||model;
+  popup.innerHTML=`<div class="pt-popup-hdr"><div class="pt-popup-badge ${info.badgeClass}">${info.badge}</div><div class="pt-popup-name">${label}</div><div class="pt-popup-meta"><span style="font-family:monospace;font-size:10px;color:#8b949e">${info.name}</span></div><div class="pt-popup-meta"><span>📐 ${info.ctx}</span><span>⚡ ${info.limit}</span>${info.swe?`<span class="swe">SWE ${info.swe}</span>`:''}</div></div><div class="pt-popup-body"><div class="pt-popup-section">Good for</div><ul class="pt-popup-list">${info.good.map(g=>`<li>${g}</li>`).join('')}</ul><div class="pt-popup-avoid"><strong style="color:#8b949e">Skip when:</strong> ${info.avoid}</div>${needsKey?`<div class="pt-popup-warn">⚠ NIM key not set<br>Run: <code style="color:#58a6ff">config nim &lt;nvapi-key&gt;</code></div>`:''}<div class="pt-popup-btns"><button class="pt-popup-use" onclick="ptSelectModel('${model}')">${isCurrent?'✓ Active':'Use this model'}</button><button class="pt-popup-cancel" onclick="ptCloseModelPopup()">Cancel</button></div></div>`;
+  const rect=el.getBoundingClientRect();const left=Math.min(rect.left,window.innerWidth-300);
+  popup.style.cssText=`position:fixed;top:${rect.bottom+6}px;left:${left}px;`;
+  document.body.appendChild(popup);
+  _popupClose=(e)=>{if(!popup.contains(e.target)&&e.target!==el)ptCloseModelPopup();};
+  setTimeout(()=>document.addEventListener('click',_popupClose),50);
+}
+function ptCloseModelPopup(){const p=document.getElementById('pt-model-popup');if(p)p.remove();if(_popupClose){document.removeEventListener('click',_popupClose);_popupClose=null;}}
+function ptSelectModel(model){ptCloseModelPopup();ptSetModel(model);}
+
+// ── AI backends ────────────────────────────────────────────────────────────
+async function ptCallGroq(messages){
+  const workerUrl=(S.workerUrl||'').replace(/\/+$/,'');
+  if(!workerUrl) throw new Error('No Worker URL — set it in Dashboard Settings');
+  const r=await fetch(workerUrl+'/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages,model:PT.model==='quality'?'quality':'fast'})});
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Worker '+r.status);}
+  return r.json();
+}
+async function ptCallNim(messages){
+  if(!PT.nimKey) throw new Error('NIM key not set — run: config nim <nvapi-key>');
+  const modelId=NIM_MODEL_IDS[PT.model]||PT.nimModel;
+  const r=await fetch(NIM_BASE,{method:'POST',headers:{Authorization:'Bearer '+PT.nimKey,'Content-Type':'application/json'},body:JSON.stringify({model:modelId,messages,max_tokens:2048,temperature:0.7})});
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error((e.detail||e.error||e.message)||'NIM '+r.status);}
+  return r.json();
+}
+async function ptCallAI(messages){
+  if(NIM_MODEL_IDS[PT.model]) return ptCallNim(messages);
+  return ptCallGroq(messages);
+}
+
 function ptSetModel(name){
-  const aliases={sonnet:'claude-sonnet-4-6',claude:'claude-sonnet-4-6',deepseek:'deepseek/deepseek-r1-0528',r1:'deepseek/deepseek-r1-0528',nano:'openai/gpt-5.4-nano',gpt:'openai/gpt-5.4-nano',fast:'openai/gpt-5.4-nano'};
-  if(!name){ptL('Current: '+C.cyan+PT.model+C.r);return;}
+  const aliases={f:'fast',q:'quality','8':'fast','70':'quality',ds:'deepseek',v3:'deepseek',qwen3:'qwen','3.5':'qwen',fast:'fast',quality:'quality',deepseek:'deepseek',qwen:'qwen',coder:'coder','480b':'coder'};
+  if(!name){
+    const nimOk=PT.nimKey?C.green+'✓'+C.r:C.yellow+'no key'+C.r;
+    ptL(C.b+'Models:'+C.r);
+    ptL('  '+C.cyan+'fast     '+C.r+'Groq · llama-3.1-8b-instant   ~unlimited');
+    ptL('  '+C.cyan+'quality  '+C.r+'Groq · llama-3.3-70b-versatile 1k req/day');
+    ptL('  '+C.cyan+'deepseek '+C.r+'NIM  · deepseek-v3             40 RPM  '+nimOk);
+    ptL('  '+C.cyan+'qwen     '+C.r+'NIM  · qwen3-235b-a22b         40 RPM  '+nimOk+'  262K ctx');
+    ptL('  '+C.cyan+'coder    '+C.r+'NIM  · qwen3-coder-480b        40 RPM  '+nimOk);
+    ptL(C.gray+'  Current: '+C.white+PT.model+C.r);
+    return;
+  }
   PT.model=aliases[name.toLowerCase()]||name;
   document.querySelectorAll('.pt-mpill').forEach(b=>b.classList.toggle('active',b.dataset.model===PT.model));
-  ptL(C.green+'Model → '+C.cyan+PT.model+C.r);
+  ptUpdateTokenBar();
+  const labels={fast:'Groq llama-3.1-8b',quality:'Groq llama-3.3-70b',deepseek:'NIM deepseek-ai/deepseek-v3',qwen:'NIM qwen/qwen3-235b-a22b',coder:'NIM qwen/qwen3-coder-480b'};
+  ptL(C.green+'Model → '+C.cyan+(labels[PT.model]||PT.model)+C.r);
+  if(NIM_MODEL_IDS[PT.model]&&!PT.nimKey) ptL(C.yellow+'NIM key not set → run: config nim <nvapi-key>'+C.r);
+}
+
+async function ptCmdConfig(key,val){
+  if(!key){
+    ptL(C.b+'Config:'+C.r);
+    ptL('  '+C.cyan+'nim        '+C.r+(PT.nimKey?'[set]':C.yellow+'[not set]'+C.r));
+    ptL('  '+C.cyan+'nim-model  '+C.r+PT.nimModel);
+    ptL('  '+C.cyan+'worker     '+C.r+(S.workerUrl||C.yellow+'[not set — use Dashboard Settings]'+C.r));
+    ptL(C.gray+'  config nim <nvapi-key>    — set NVIDIA NIM API key'+C.r);
+    ptL(C.gray+'  config nim-model <name>   — override NIM model'+C.r);
+    return;
+  }
+  if(key==='nim'){if(!val){ptL(C.gray+'Usage: config nim <nvapi-key>'+C.r);return;}PT.nimKey=val;ptL(C.green+'✓ NIM key saved (persists encrypted on exit)'+C.r);}
+  else if(key==='nim-model'){if(!val){ptL(C.gray+'Usage: config nim-model <model-id>'+C.r);return;}PT.nimModel=val;ptL(C.green+'✓ NIM model override → '+val+C.r);}
+  else ptL(C.red+'Unknown: '+key+'. Try: nim, nim-model'+C.r);
+  ptSaveSessionState();
 }
 
 function ptUpdateStatus(msg){
@@ -4052,72 +4194,47 @@ const PT_SYS = 'You are PhytoTerm, an AI dev assistant inside Phyto Studio.\n'+
 
 async function ptAskClaude(userInput){
   PT.messages.push({role:'user',content:userInput});
-
-  // Thinking animation
-  let dotN=0;
-  const thinkId=setInterval(()=>{ ptClear(); ptW(C.gray+'✦ '+['·','··','···','····'][dotN++%4]+C.r); },350);
-
+  let dotN=0; let thinkId=null;
+  const startThink=()=>{stopThink();thinkId=setInterval(()=>{ptClear();ptW(C.gray+'✦ '+['·','··','···','····'][dotN++%4]+C.r);},350);ptClear();ptW(C.gray+'✦ ·'+C.r);};
+  const stopThink=()=>{if(thinkId){clearInterval(thinkId);thinkId=null;}ptClear();};
+  startThink();
   try{
-    const MAX_HOPS=5;
-    for(let hop=0;hop<MAX_HOPS;hop++){
-      if(!PT.busy){clearInterval(thinkId);ptClear();return;}
-
+    for(let hop=0;hop<5;hop++){
+      if(!PT.busy){stopThink();return;}
       const msgs=[
         {role:'user',content:PT_SYS+'\n\nContext: repo='+PT.repo+', branch='+PT.branch+', path=/'+(PT.path||'')+', user='+(PT.ghUser||GH_OWNER)},
         {role:'assistant',content:'PhytoTerm ready. Connected to '+PT.repo+' ('+PT.branch+').'},
         ...PT.messages,
       ];
-
-      const result=await puter.ai.chat(msgs,{model:PT.model});
-      const text=(result&&result.message&&result.message.content&&result.message.content[0]&&result.message.content[0].text)||'';
-
+      const result=await ptCallAI(msgs);
+      const u=result.usage||{};
+      PT.usage.input+=(u.prompt_tokens||u.input_tokens||Math.ceil(msgs.reduce((s,m)=>s+(m.content||'').length,0)/4));
+      PT.usage.output+=(u.completion_tokens||u.output_tokens||0);
+      PT.usage.calls++;
+      ptUpdateTokenBar();
+      const text=(result.choices&&result.choices[0]&&result.choices[0].message&&result.choices[0].message.content)||'';
       PT.messages.push({role:'assistant',content:text});
-
-      // Parse action block
       const m=/<gh>([\s\S]*?)<\/gh>/.exec(text);
-
-      clearInterval(thinkId); ptClear();
-
-      // Print text before any action block
+      stopThink();
       const before=(m?text.slice(0,m.index):text).replace(/<gh>[\s\S]*?<\/gh>/g,'').trim();
       if(before) ptW(before.replace(/\n/g,'\r\n')+'\r\n');
-
-      if(!m) break; // no action — done
-
-      // Execute action
+      if(!m) break;
       let actionResult='';
-      try{
-        actionResult=await ptExecGhAction(JSON.parse(m[1]));
-      }catch(e){ actionResult='Parse/exec error: '+e.message; }
-
-      // Print text after action block (if any)
+      try{actionResult=await ptExecGhAction(JSON.parse(m[1]));}catch(e){actionResult='Error: '+e.message;}
       const after=text.slice(m.index+m[0].length).replace(/<gh>[\s\S]*?<\/gh>/g,'').trim();
       if(after) ptW(after.replace(/\n/g,'\r\n')+'\r\n');
-
-      // Feed result back and loop
       PT.messages.push({role:'user',content:'[Result]: '+actionResult+'\n\nContinue.'});
       ptLog('gh',actionResult.slice(0,120));
-
-      // Re-arm thinking for next hop
-      dotN=0;
-      const thinkId2=setInterval(()=>{ ptClear(); ptW(C.gray+'✦ '+['·','··','···','····'][dotN++%4]+C.r); },350);
-      // Replace outer thinkId reference (can't reassign const) — just re-arm inline above, break at top of next loop
-      await new Promise(r=>setTimeout(r,80)); // yield
-      clearInterval(thinkId2);
+      startThink();
     }
   }catch(e){
-    clearInterval(thinkId); ptClear();
-    if((e.message||'').toLowerCase().includes('sign')||( e.message||'').toLowerCase().includes('auth')){
-      ptL(C.yellow+'Puter sign-in needed. A popup will open…'+C.r);
-      try{ await puter.auth.signIn(); await ptAskClaude(userInput); return; }catch{}
-    }else{
-      ptL(C.red+'AI error: '+e.message+C.r);
-    }
+    stopThink();
+    ptL(C.red+'AI error: '+e.message+C.r);
+    if(NIM_MODEL_IDS[PT.model]&&!PT.nimKey) ptL(C.yellow+'→ NIM key not set. Run: config nim <nvapi-key>'+C.r);
   }
-
   ptLog('ai',(PT.messages[PT.messages.length-1]||{}).content?.slice(0,200)||'');
   if(PT.messages.length>40) PT.messages=PT.messages.slice(-40);
-  ptSaveSessionState(); // auto-save to sessionStorage after each exchange
+  ptSaveSessionState();
 }
 
 async function ptExecGhAction(action){
@@ -4161,7 +4278,7 @@ async function ptExecGhAction(action){
     case 'get_commits':{
       const n=action.n||10;
       ptL(C.gray+'✦ fetching commits…'+C.r);
-      const cs=await ptApiGet(base+'/commits?ref='+branch+'&per_page='+n);
+      const cs=await ptApiGet(base+'/commits?sha='+branch+'&per_page='+n);
       cs.forEach(c=>ptL(C.yellow+c.sha.slice(0,7)+C.r+' '+c.commit.message.split('\n')[0]));
       return cs.map(c=>c.sha.slice(0,7)+' '+c.commit.message.split('\n')[0]).join('\n');
     }
