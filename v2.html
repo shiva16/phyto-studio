@@ -2219,6 +2219,7 @@ async function publishReveal(){
   saveCurSlide();
   try{
     const slug=S.current.slug;
+    if(!slug||slug==='undefined'){toast('Presentation has no slug — save it first','warn',5000);return;}
     // Reuse existing key or generate new one
     if(!S.current.viewKey)S.current.viewKey=generateViewKey();
     const viewKey=S.current.viewKey;
