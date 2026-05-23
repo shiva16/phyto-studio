@@ -115,11 +115,33 @@ input,select,textarea,button{font-family:inherit}
 .featured-info{padding:10px 12px 12px}
 .featured-title{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
 .featured-meta{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)}
-/* Grid header with sort */
-.grid-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.grid-hdr-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+/* Grid header with sort + view controls */
+.grid-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap}
+.grid-hdr-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;flex:1}
+.grid-hdr-right{display:flex;align-items:center;gap:6px}
 .sort-sel{height:26px;border:1px solid var(--border);border-radius:var(--r);font-size:11px;font-family:var(--font);color:var(--text2);background:var(--bg);padding:0 6px;cursor:pointer;outline:none}
 .sort-sel:hover,.sort-sel:focus{border-color:var(--accent);color:var(--text)}
+.view-ctrl-group{display:flex;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.view-ctrl-btn{height:26px;padding:0 7px;border:none;background:transparent;color:var(--text3);font-size:11px;font-weight:600;cursor:pointer;transition:all .1s;font-family:var(--font);white-space:nowrap}
+.view-ctrl-btn:hover{background:var(--surface2);color:var(--text)}
+.view-ctrl-btn.active{background:var(--surface2);color:var(--accent)}
+.view-ctrl-sep{width:1px;background:var(--border);flex-shrink:0}
+/* Grid size variants */
+.pres-grid.size-s{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.pres-grid.size-m{grid-template-columns:repeat(auto-fill,minmax(208px,1fr));gap:18px}
+.pres-grid.size-l{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+.pres-grid.size-s .card-thumb{height:92px}
+.pres-grid.size-l .card-thumb{height:162px}
+/* List view */
+.pres-grid.list-view{display:flex;flex-direction:column;gap:6px}
+.pres-grid.list-view .pres-card{display:flex;flex-direction:row;align-items:stretch}
+.pres-grid.list-view .pres-card.new-card{justify-content:flex-start;min-height:auto;padding:10px 16px;gap:10px;flex-direction:row}
+.pres-grid.list-view .card-thumb{width:88px;height:auto;min-height:58px;flex-shrink:0}
+.pres-grid.list-view .card-info{display:flex;flex-direction:row;align-items:center;flex:1;padding:8px 14px;gap:14px;flex-wrap:nowrap;overflow:hidden}
+.pres-grid.list-view .card-title{flex:1;min-width:0;margin-bottom:0;font-size:13px}
+.pres-grid.list-view .card-meta{flex-shrink:0;gap:8px}
+.pres-grid.list-view .card-bottom{display:none}
+.pres-grid.list-view .card-info>div:last-child{margin-top:0;flex-shrink:0}
 /* Thumb fallback */
 .thumb-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;color:rgba(255,255,255,.85);font-family:var(--font);letter-spacing:-1px;user-select:none}
 /* Card improvements */
@@ -762,13 +784,27 @@ async function mountDashboard(){
       <div class="dash-section">
         <div class="grid-hdr">
           <div class="grid-hdr-title" id="grid-hdr-title">All Presentations</div>
-          <select class="sort-sel" id="sort-sel" onchange="renderDashGrid(S.presentations)">
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-            <option value="az">A → Z</option>
-            <option value="za">Z → A</option>
-            <option value="published">Published first</option>
-          </select>
+          <div class="grid-hdr-right">
+            <select class="sort-sel" id="sort-sel" onchange="renderDashGrid(S.presentations)">
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="az">A → Z</option>
+              <option value="za">Z → A</option>
+              <option value="published">Published first</option>
+            </select>
+            <div class="view-ctrl-group" id="size-ctrl">
+              <button class="view-ctrl-btn" data-size="s" onclick="setDashCardSize('s')" title="Small cards">S</button>
+              <div class="view-ctrl-sep"></div>
+              <button class="view-ctrl-btn active" data-size="m" onclick="setDashCardSize('m')" title="Medium cards">M</button>
+              <div class="view-ctrl-sep"></div>
+              <button class="view-ctrl-btn" data-size="l" onclick="setDashCardSize('l')" title="Large cards">L</button>
+            </div>
+            <div class="view-ctrl-group" id="view-ctrl">
+              <button class="view-ctrl-btn active" data-view="grid" onclick="setDashViewMode('grid')" title="Grid view">⊞</button>
+              <div class="view-ctrl-sep"></div>
+              <button class="view-ctrl-btn" data-view="list" onclick="setDashViewMode('list')" title="List view">≡</button>
+            </div>
+          </div>
         </div>
         <div class="pres-grid" id="pres-grid"><div style="color:var(--text3);font-size:13px;padding:20px 0">Loading…</div></div>
       </div>
@@ -873,6 +909,29 @@ function renderFeatured(list){
     </div>`;
 }
 
+// ── Dashboard view controls ────────────────────────────────────────────────
+function applyDashView(grid){
+  if(!grid)return;
+  const size=localStorage.getItem('dash-size')||'m';
+  const view=localStorage.getItem('dash-view')||'grid';
+  grid.classList.remove('size-s','size-m','size-l','list-view');
+  if(view==='list') grid.classList.add('list-view');
+  else grid.classList.add('size-'+size);
+  document.querySelectorAll('#size-ctrl .view-ctrl-btn').forEach(b=>b.classList.toggle('active',b.dataset.size===size));
+  document.querySelectorAll('#view-ctrl .view-ctrl-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+  // Size controls only relevant in grid mode
+  document.getElementById('size-ctrl').style.opacity=view==='list'?'0.4':'1';
+  document.getElementById('size-ctrl').style.pointerEvents=view==='list'?'none':'';
+}
+function setDashCardSize(size){
+  localStorage.setItem('dash-size',size);
+  applyDashView(document.getElementById('pres-grid'));
+}
+function setDashViewMode(mode){
+  localStorage.setItem('dash-view',mode);
+  applyDashView(document.getElementById('pres-grid'));
+}
+
 function renderDashGrid(list){
   const sort=document.getElementById('sort-sel')?.value||'newest';
   let filtered=(S.brand==='all'?list:list.filter(p=>p.brand===S.brand)).slice();
@@ -924,6 +983,7 @@ function renderDashGrid(list){
     </div>`;
   });
   grid.innerHTML=html;
+  applyDashView(grid);
 
   grid.querySelector('.new-card')?.addEventListener('click',openNewPresModal);
   grid.querySelectorAll('.pres-card[data-slug]').forEach(card=>{
