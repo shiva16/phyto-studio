@@ -14,8 +14,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy worker
-        uses: cloudflare/wrangler-action@v3
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          apiToken: ${{ secrets.studio_cf }}
-          workingDirectory: worker
+          node-version: '20'
+
+      - name: Install wrangler
+        run: npm install
+        working-directory: worker
+
+      - name: Deploy worker
+        run: npx wrangler deploy index.js --name studio
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.studio_cf }}
