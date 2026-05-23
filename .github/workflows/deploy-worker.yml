@@ -14,7 +14,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy worker + push secrets
+      - name: Deploy worker code
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.studio_cf }}
+          workingDirectory: worker
+
+      - name: Push GROQ_API_KEY secret
+        if: ${{ secrets.GROQ_API_KEY != '' }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.studio_cf }}
