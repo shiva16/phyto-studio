@@ -236,6 +236,62 @@ input,select,textarea,button{font-family:inherit}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--text3)}
 input[type=range]{accent-color:var(--accent)}
+
+/* ---- HELP PANEL ---- */
+.help-overlay{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px}
+.help-modal{background:var(--bg);border-radius:12px;box-shadow:0 12px 48px rgba(0,0,0,.28);width:100%;max-width:1020px;height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.help-hdr{display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--border);flex-shrink:0}
+.help-hdr-title{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap}
+.help-hdr-title em{color:var(--accent);font-style:normal}
+.help-search-wrap{flex:1;position:relative;max-width:420px;margin:0 auto}
+.help-search-inp{width:100%;padding:7px 14px 7px 36px;border:1.5px solid var(--border);border-radius:20px;font-size:13px;font-family:var(--font);background:var(--surface2);color:var(--text);outline:none;transition:border-color .15s,background .15s}
+.help-search-inp:focus{border-color:var(--accent);background:var(--bg)}
+.help-search-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none;font-size:12px;line-height:1}
+.help-body-wrap{display:flex;flex:1;overflow:hidden}
+.help-nav{width:192px;flex-shrink:0;border-right:1px solid var(--border);padding:10px 7px;overflow-y:auto;background:var(--surface)}
+.help-nav-cat{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;padding:10px 9px 3px;margin-top:6px}
+.help-nav-cat:first-child{margin-top:0;padding-top:2px}
+.help-nav-btn{display:flex;align-items:center;gap:9px;width:100%;padding:7px 10px;border-radius:7px;border:none;background:none;font-size:13px;font-family:var(--font);color:var(--text2);cursor:pointer;text-align:left;transition:background .12s,color .12s;line-height:1.3}
+.help-nav-btn:hover{background:var(--surface2);color:var(--text)}
+.help-nav-btn.active{background:var(--accent-bg);color:var(--accent);font-weight:600}
+.help-nav-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0;font-family:system-ui,sans-serif}
+.help-content{flex:1;overflow-y:auto;padding:24px 28px}
+.help-section{display:none}.help-section.on{display:block}
+.help-sec-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;letter-spacing:-.2px}
+.help-sec-sub{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.65}
+.hcard{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:15px 18px;margin-bottom:12px}
+.hcard-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:7px;font-family:system-ui,sans-serif}
+.hcard-body{font-size:12.5px;color:var(--text2);line-height:1.78}
+.hcard-body p{margin-bottom:8px}.hcard-body p:last-child{margin-bottom:0}
+.hcard-body strong{color:var(--text);font-weight:600}
+.hcard-body code{background:var(--surface2);border:1px solid var(--border);border-radius:4px;font-family:'Courier New',monospace;font-size:11px;padding:1px 6px;color:var(--accent)}
+.hcard-body ul,.hcard-body ol{padding-left:18px;margin:5px 0 8px}
+.hcard-body li{margin-bottom:3px}
+.hcard-body table{border-collapse:collapse;width:100%;margin:8px 0;font-size:12px}
+.hcard-body th,.hcard-body td{border:1px solid var(--border);padding:7px 11px;text-align:left;vertical-align:top}
+.hcard-body th{background:var(--surface2);font-weight:600;color:var(--text)}
+.htag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:3px;margin:2px 2px 2px 0;letter-spacing:.2px;font-family:system-ui,sans-serif}
+.htag-green{background:rgba(52,168,83,.12);color:#34a853}
+.htag-teal{background:rgba(26,107,85,.14);color:var(--accent)}
+.htag-blue{background:rgba(26,115,232,.12);color:#1a73e8}
+.htag-amber{background:rgba(242,153,0,.13);color:#b07800}
+.htag-red{background:rgba(217,48,37,.12);color:var(--danger)}
+.htag-gray{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+[data-theme=dark] .htag-amber{color:#f0a818}
+.hstep{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start}
+.hstep-n{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;font-family:system-ui,sans-serif}
+.hkbd-sec{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:14px 0 5px}
+.hkbd-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);gap:12px}
+.hkbd-row:last-child{border-bottom:none}
+.hkbd-desc{font-size:12.5px;color:var(--text)}
+kbd{background:var(--surface2);border:1px solid var(--border);border-bottom:2px solid var(--border2);border-radius:4px;font-size:11px;font-family:'Courier New',monospace;padding:2px 7px;color:var(--text);white-space:nowrap;display:inline-block}
+.hno-results{text-align:center;padding:60px 20px;color:var(--text3);font-size:14px;display:none}
+.hno-results.on{display:block}
+.hwarn{background:rgba(242,153,0,.08);border:1px solid rgba(242,153,0,.25);border-radius:7px;padding:10px 14px;font-size:12px;color:#b07800;margin-top:10px;line-height:1.65}
+[data-theme=dark] .hwarn{color:#f0a818}
+.hinfo{background:rgba(26,107,85,.07);border:1px solid rgba(26,107,85,.2);border-radius:7px;padding:10px 14px;font-size:12px;color:var(--accent);margin-top:10px;line-height:1.65}
+.hgrid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+@media(max-width:700px){.help-modal{height:100vh;border-radius:0}.help-nav{display:none}.hgrid2{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -518,6 +574,7 @@ async function mountDashboard(){
       </div>
       <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
         <div class="dash-search"><span class="dash-search-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span><input id="dash-q" type="text" placeholder="Search…" oninput="filterDash(this.value)"></div>
+        <button class="btn btn-ghost btn-sm" onclick="openHelpPanel('start')" title="Help (?)">?</button>
         <button class="btn btn-ghost btn-sm" onclick="openDashSettings()" title="Settings">⚙</button>
         <button class="btn btn-ghost btn-sm" onclick="cycleTheme()">◑</button>
         <button class="btn btn-ghost btn-sm" onclick="signOut()">Sign out</button>
@@ -795,7 +852,7 @@ async function openEditor(slug){
       <div class="ed-hdr-right">
         <span class="ed-save-badge" id="save-badge"></span>
         <button class="btn btn-ghost btn-sm" onclick="openAiPanel()" title="AI Content Generator">* AI</button>
-        <button class="btn btn-ghost btn-sm" onclick="openShortcutsPanel()" title="Keyboard shortcuts (?)">?</button>
+        <button class="btn btn-ghost btn-sm" onclick="openHelpPanel('shortcuts')" title="Help &amp; shortcuts (?)">?</button>
         <button class="btn btn-ghost btn-sm" onclick="openPresSettings()" title="Presentation settings">⚙</button>
         <button class="btn btn-ghost btn-sm" onclick="cycleTheme()">◑</button>
         <button class="btn btn-secondary btn-sm" onclick="exportPPTX()">↓ PPTX</button>
@@ -2055,7 +2112,7 @@ document.addEventListener('keydown',e=>{
   }
   if(e.key==='PageUp'){e.preventDefault();if(S.curSlide>0)switchSlide(S.curSlide-1);return;}
   if(e.key==='PageDown'){e.preventDefault();if(S.curSlide<S.slides.length-1)switchSlide(S.curSlide+1);return;}
-  if(e.key==='?'&&!isTyping()){openShortcutsPanel();return;}
+  if(e.key==='?'&&!isTyping()){openHelpPanel('shortcuts');return;}
   if(isTyping())return;
   if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();doDelete();return;}
   if(e.key==='Escape'){
@@ -2200,51 +2257,541 @@ async function deleteFromDash(slug){
 }
 
 // ===================== KEYBOARD SHORTCUTS PANEL =====================
-function openShortcutsPanel(){
-  if(document.getElementById('shortcuts-overlay')){document.getElementById('shortcuts-overlay').remove();return;}
+// ===================== HELP PANEL =====================
+function openHelpPanel(tab){
+  tab=tab||'start';
+  if(document.getElementById('help-overlay')){document.getElementById('help-overlay').remove();return;}
   const el=document.createElement('div');
-  el.className='modal-overlay';
-  el.id='shortcuts-overlay';
-  const row=(kb,desc)=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">${desc}</span><kbd style="font-size:11px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 6px;font-family:monospace;white-space:nowrap">${kb}</kbd></div>`;
-  const hdr=(t)=>`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin:14px 0 6px">${t}</div>`;
+  el.className='help-overlay';
+  el.id='help-overlay';
   el.innerHTML=`
-  <div class="modal" style="width:460px;max-height:80vh;overflow-y:auto">
-    <div class="modal-hdr"><div class="modal-title">Keyboard Shortcuts</div><button class="btn-icon" onclick="document.getElementById('shortcuts-overlay').remove()">✕</button></div>
-    <div class="modal-body" style="padding-bottom:20px">
-      ${hdr('File')}
-      ${row('Ctrl+S','Save')}
-      ${hdr('Edit')}
-      ${row('Ctrl+Z','Undo')}
-      ${row('Ctrl+Y / Ctrl+Shift+Z','Redo')}
-      ${row('Ctrl+C','Copy')}
-      ${row('Ctrl+V','Paste')}
-      ${row('Ctrl+D','Duplicate')}
-      ${row('Ctrl+A','Select all')}
-      ${row('Delete / Backspace','Delete selected')}
-      ${row('Escape','Deselect / close')}
-      ${hdr('Tools')}
-      ${row('V','Select tool')}
-      ${row('T','Text tool')}
-      ${hdr('Formatting')}
-      ${row('Ctrl+B','Bold')}
-      ${row('Ctrl+I','Italic')}
-      ${row('Ctrl+U','Underline')}
-      ${hdr('Arrange')}
-      ${row('Ctrl+G','Group')}
-      ${row('Ctrl+Shift+G','Ungroup')}
-      ${hdr('Slides')}
-      ${row('Ctrl+M','New slide')}
-      ${row('PageUp','Previous slide')}
-      ${row('PageDown','Next slide')}
-      ${hdr('Canvas')}
-      ${row('Arrow keys','Nudge 1px')}
-      ${row('Shift+Arrow','Nudge 10px')}
-      ${hdr('Help')}
-      ${row('?','Show this panel')}
+<div class="help-modal">
+  <div class="help-hdr">
+    <div class="help-hdr-title"><em>Phyto</em> Studio — Help &amp; Reference</div>
+    <div class="help-search-wrap">
+      <span class="help-search-ico">&#9906;</span>
+      <input class="help-search-inp" id="help-search-inp" placeholder="Search docs, features, shortcuts…" oninput="helpSearch(this.value)" autocomplete="off">
     </div>
-  </div>`;
-  el.addEventListener('click',e=>{if(e.target===el)el.remove();});
+    <button class="btn-icon" onclick="closeHelpPanel()" title="Close (Esc)">&#10005;</button>
+  </div>
+  <div class="help-body-wrap">
+    <nav class="help-nav">
+      <div class="help-nav-cat">Using the Studio</div>
+      <button class="help-nav-btn" data-sec="start" onclick="showHelpSection('start')"><span class="help-nav-icon">&#128640;</span>Getting Started</button>
+      <button class="help-nav-btn" data-sec="dashboard" onclick="showHelpSection('dashboard')"><span class="help-nav-icon">&#9783;</span>Dashboard</button>
+      <button class="help-nav-btn" data-sec="editor" onclick="showHelpSection('editor')"><span class="help-nav-icon">&#9998;</span>Editor</button>
+      <div class="help-nav-cat">Features</div>
+      <button class="help-nav-btn" data-sec="ai" onclick="showHelpSection('ai')"><span class="help-nav-icon">&#10022;</span>AI Content</button>
+      <button class="help-nav-btn" data-sec="export" onclick="showHelpSection('export')"><span class="help-nav-icon">&#8681;</span>Exporting</button>
+      <div class="help-nav-cat">Reference</div>
+      <button class="help-nav-btn" data-sec="shortcuts" onclick="showHelpSection('shortcuts')"><span class="help-nav-icon">&#9000;</span>Shortcuts</button>
+    </nav>
+    <div class="help-content" id="help-content">
+      <div class="hno-results" id="help-no-results">No results found — try a different keyword.</div>
+
+      <!-- ═══ GETTING STARTED ═══ -->
+      <div class="help-section" data-sec="start">
+        <div class="help-sec-title">Getting Started</div>
+        <div class="help-sec-sub">Phyto Studio is a single-file AI-powered marketing content studio for Phyto Evolution Pvt. Ltd. All data is AES-256-GCM encrypted and stored directly in your GitHub repo.</div>
+
+        <div class="hcard" data-tags="what is phyto studio overview intro multi-brand ai marketing content">
+          <div class="hcard-title">&#127757; What is Phyto Studio?</div>
+          <div class="hcard-body">
+            <p>A WYSIWYG presentation builder serving three brands on a single GitHub-backed app. You design slides in the editor, export to PowerPoint or publish live Reveal.js viewers, and optionally generate content with AI (Groq via Cloudflare Worker).</p>
+            <div class="hgrid2">
+              <div><span class="htag htag-teal">tcplants.in</span><br>Tissue culture manufacturing &amp; lab plants</div>
+              <div><span class="htag htag-green">carnivorousplants.in</span><br>Retail carnivorous plant sales</div>
+              <div><span class="htag htag-blue">phytolabs.in</span><br>Lab services, chemicals, B2B</div>
+              <div><span class="htag htag-gray">All data</span><br>AES-256-GCM encrypted .enc files in GitHub</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="sign in login github pat token personal access auth repo permissions">
+          <div class="hcard-title">&#128273; Signing In with a GitHub PAT</div>
+          <div class="hcard-body">
+            <div class="hstep"><div class="hstep-n">1</div><div>Go to <strong>github.com → Settings → Developer Settings → Personal Access Tokens → Tokens (classic)</strong></div></div>
+            <div class="hstep"><div class="hstep-n">2</div><div>Click <strong>Generate new token (classic)</strong>. Check the <code>repo</code> scope (read + write). Set an expiry you are comfortable with.</div></div>
+            <div class="hstep"><div class="hstep-n">3</div><div>Copy the token and paste it into Phyto Studio's sign-in form. Click <strong>Sign In</strong>.</div></div>
+            <div class="hstep"><div class="hstep-n">4</div><div>Your token is stored in <strong>sessionStorage only</strong> — it is cleared when you close the tab. It is never logged or sent anywhere except the GitHub API.</div></div>
+            <div class="hwarn">&#9888; Your PAT also derives the AES-256 encryption key. Data saved with one PAT <strong>cannot be decrypted</strong> with a different PAT — even for the same GitHub account. Do not rotate your PAT without migrating encrypted files.</div>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="ai worker cloudflare groq setup config url worker.dev">
+          <div class="hcard-title">&#9881; AI Worker Setup</div>
+          <div class="hcard-body">
+            <p>AI features require a <strong>Cloudflare Worker</strong> that proxies requests to Groq. The worker is deployed automatically via GitHub Actions when you push to main — it requires three repository secrets.</p>
+            <table>
+              <tr><th>Secret</th><th>Where to get it</th></tr>
+              <tr><td><code>CLOUDFLARE_API_TOKEN</code></td><td>Cloudflare dashboard → My Profile → API Tokens</td></tr>
+              <tr><td><code>CLOUDFLARE_ACCOUNT_ID</code></td><td>Cloudflare dashboard → right sidebar</td></tr>
+              <tr><td><code>GROQ_API_KEY</code></td><td>console.groq.com → API Keys</td></tr>
+            </table>
+            <p style="margin-top:10px">After deployment, get your <code>*.workers.dev</code> URL from the Cloudflare dashboard and paste it into <strong>Dashboard → &#9881; Settings → AI Worker URL → Save</strong>.</p>
+            <div class="hinfo">&#128161; Without the Worker URL, the AI button appears in the editor but returns an error. All other features work without it.</div>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="data storage github repo encryption encrypted enc file security">
+          <div class="hcard-title">&#128274; How Data is Stored</div>
+          <div class="hcard-body">
+            <table>
+              <tr><th>File</th><th>Content</th><th>Readable by</th></tr>
+              <tr><td><code>data/catalogue.enc</code></td><td>Presentation index (title, status, dates…)</td><td>Signed-in user only</td></tr>
+              <tr><td><code>data/presentations/[slug].json</code></td><td>Encrypted slide JSON (Fabric.js)</td><td>Signed-in user only</td></tr>
+              <tr><td><code>view/[slug]/index.html</code></td><td>Published Reveal.js viewer (encrypted)</td><td>Anyone with the full URL+key</td></tr>
+            </table>
+            <p style="margin-top:8px">Every write is a GitHub API PUT to the <code>shiva16/phyto-studio</code> repo on the <code>main</code> branch. Each file stores the SHA for conflict-safe updates.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ DASHBOARD ═══ -->
+      <div class="help-section" data-sec="dashboard">
+        <div class="help-sec-title">Dashboard</div>
+        <div class="help-sec-sub">The dashboard is your home screen — browse, create, filter, and manage all presentations across the three brands.</div>
+
+        <div class="hcard" data-tags="brand tabs filter all phytolabs tcplants carnivorousplants count search">
+          <div class="hcard-title">&#127991; Brand Tabs &amp; Search</div>
+          <div class="hcard-body">
+            <p>The four tabs at the top — <strong>All · Phyto Labs · TC Plants · Carnivorous Plants</strong> — filter the grid. The number in parentheses is the live count for that brand.</p>
+            <p>The search bar (top-right of header) filters by presentation <strong>title</strong> in real time. Brand filter and search work together.</p>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="new create presentation add title brand ai brief new card dashed plus">
+          <div class="hcard-title">&#10133; Creating a Presentation</div>
+          <div class="hcard-body">
+            <div class="hstep"><div class="hstep-n">1</div><div>Click the dashed <strong>+ New Presentation</strong> card in the grid.</div></div>
+            <div class="hstep"><div class="hstep-n">2</div><div>Enter a title and choose a brand. The slug (URL path) is auto-generated from the title.</div></div>
+            <div class="hstep"><div class="hstep-n">3</div><div><em>Optional:</em> If a Worker URL is configured, an <strong>AI Brief</strong> textarea appears — describe what you need. The AI panel pre-fills with your brief when the editor opens.</div></div>
+            <div class="hstep"><div class="hstep-n">4</div><div>Click <strong>Create</strong>. A blank presentation is saved to GitHub and the editor opens immediately.</div></div>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="status draft published archived scheduled expired visible pip dot badge colour">
+          <div class="hcard-title">&#11044; Presentation Status</div>
+          <div class="hcard-body">
+            <table>
+              <tr><th>Status</th><th>Dot</th><th>Meaning</th></tr>
+              <tr><td><strong>Draft</strong></td><td><span class="htag htag-gray">gray</span></td><td>Work in progress — not published to the web</td></tr>
+              <tr><td><strong>Published</strong></td><td><span class="htag htag-green">green</span></td><td>Live — has a Reveal.js viewer URL; appears in public catalogue</td></tr>
+              <tr><td><strong>Archived</strong></td><td><span class="htag htag-gray">dark gray</span></td><td>Removed from public catalogue but viewer URL still works</td></tr>
+              <tr><td><strong>Scheduled</strong></td><td><span class="htag htag-amber">amber</span></td><td>Published but <em>visible from</em> date is in the future</td></tr>
+              <tr><td><strong>Expired</strong></td><td><span class="htag htag-red">red</span></td><td>Published but past its expiry date — auto-hidden from catalogue</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="card info panel edit preview publish archive delete expiry visible from dates thumbnail">
+          <div class="hcard-title">&#128196; Card Info Panel</div>
+          <div class="hcard-body">
+            <p>Click any presentation card to open the info panel. From here you can:</p>
+            <ul>
+              <li><strong>Edit title, brand, status</strong> — changes saved immediately on clicking Save in the panel</li>
+              <li><strong>Visible from / Expires</strong> — set date/time for scheduled visibility and auto-expiry</li>
+              <li><strong>Preview Slides</strong> — fullscreen slide-by-slide preview without opening the editor</li>
+              <li><strong>Edit</strong> — opens the WYSIWYG editor</li>
+              <li><strong>Publish to Web</strong> — generates the encrypted Reveal.js viewer in <code>view/[slug]/</code></li>
+              <li><strong>Delete</strong> — removes from catalogue (the encrypted file stays in the repo)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="settings worker url theme dark light paper github pat repo">
+          <div class="hcard-title">&#9881; Dashboard Settings</div>
+          <div class="hcard-body">
+            <p>Click <strong>&#9881;</strong> in the dashboard header to open Settings:</p>
+            <ul>
+              <li><strong>AI Worker URL</strong> — paste your Cloudflare Worker <code>*.workers.dev</code> URL here to enable AI generation</li>
+              <li><strong>Theme toggle ◑</strong> — cycles between Light, Dark, and Paper themes (saved in localStorage)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="preview slides fullscreen slide by slide view thumbnails arrow keyboard">
+          <div class="hcard-title">&#127916; Preview Slides</div>
+          <div class="hcard-body">
+            <p>From the Card Info Panel → click <strong>Preview Slides</strong>. Each slide is rendered via Fabric.js at 75% resolution in a fullscreen dark overlay.</p>
+            <ul>
+              <li>Navigate with <kbd>&#8592;</kbd> <kbd>&#8594;</kbd> arrow keys or the Prev/Next buttons</li>
+              <li>Dot indicators show current slide position</li>
+              <li>Press <kbd>Esc</kbd> to close</li>
+              <li>Works for both draft and published presentations</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ EDITOR ═══ -->
+      <div class="help-section" data-sec="editor">
+        <div class="help-sec-title">Editor</div>
+        <div class="help-sec-sub">A Fabric.js WYSIWYG canvas editor with a Google Slides–style layout. Menu bar · Toolbar · Slide panel · Canvas · Properties panel · Speaker notes.</div>
+
+        <div class="hcard" data-tags="toolbar tools select text shapes image insert tool v t">
+          <div class="hcard-title">&#9874; Toolbar Tools</div>
+          <div class="hcard-body">
+            <table>
+              <tr><th>Tool</th><th>Shortcut</th><th>What it does</th></tr>
+              <tr><td><strong>&#9654; Select</strong></td><td><kbd>V</kbd></td><td>Click to select objects; drag to move; handles to resize/rotate</td></tr>
+              <tr><td><strong>T Text</strong></td><td><kbd>T</kbd></td><td>Click canvas to place a text box; double-click existing text to edit inline</td></tr>
+              <tr><td><strong>&#9645; Shapes</strong></td><td>—</td><td>Click the shape button to open picker; choose from 8 shapes and click on canvas</td></tr>
+              <tr><td><strong>Img Image</strong></td><td>—</td><td>Opens a file picker; inserts the image onto the canvas centered</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="canvas click select drag move resize rotate handles double click inline edit context menu right click">
+          <div class="hcard-title">&#128444; Canvas Interaction</div>
+          <div class="hcard-body">
+            <table>
+              <tr><th>Action</th><th>Result</th></tr>
+              <tr><td>Click object</td><td>Select it — shows resize handles and rotation handle</td></tr>
+              <tr><td>Drag object</td><td>Move it; hold <kbd>Shift</kbd> to constrain axis</td></tr>
+              <tr><td>Corner handles</td><td>Resize proportionally (Shift to free-scale)</td></tr>
+              <tr><td>Top handle</td><td>Rotate</td></tr>
+              <tr><td>Double-click text</td><td>Enter inline text editing mode</td></tr>
+              <tr><td>Right-click object</td><td>Context menu — copy, paste, duplicate, layer, group, delete</td></tr>
+              <tr><td>Click outside</td><td>Deselect (or press <kbd>Esc</kbd>)</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="slide panel left sidebar add delete reorder list thumbnail pageup pagedown navigate">
+          <div class="hcard-title">&#128203; Slide Panel</div>
+          <div class="hcard-body">
+            <p>The <strong>left sidebar</strong> shows all slides as numbered thumbnails.</p>
+            <ul>
+              <li>Click a thumbnail to switch to that slide</li>
+              <li>Click <strong>+</strong> (or <kbd>Ctrl+M</kbd>) to add a new blank slide</li>
+              <li>Right-click a thumbnail → <strong>Delete Slide</strong> to remove it</li>
+              <li>Navigate with <kbd>PageUp</kbd> / <kbd>PageDown</kbd> keyboard shortcuts</li>
+              <li>Slides auto-save their canvas state when you switch between them</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="properties panel right sidebar fill color text stroke border object selected">
+          <div class="hcard-title">&#9998; Properties Panel</div>
+          <div class="hcard-body">
+            <p>The <strong>right sidebar</strong> shows object properties when an object is selected. Click any color swatch to open a color picker.</p>
+            <ul>
+              <li><strong>Fill color (&#9639;)</strong> — background fill of the selected object</li>
+              <li><strong>Text color (A)</strong> — text/label color</li>
+              <li><strong>Border color (&#9633;)</strong> — stroke/border color and width</li>
+              <li><strong>Layer buttons</strong> — Bring Forward / Send Backward / To Front / To Back</li>
+              <li><strong>Align buttons</strong> — Left / Center / Right relative to the slide canvas</li>
+            </ul>
+            <p>Font family and font size are in the <strong>toolbar dropdowns</strong> (also affect selected text).</p>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="shapes 8 rect rectangle rounded circle ellipse triangle star arrow line diamond insert">
+          <div class="hcard-title">&#9645; Shapes</div>
+          <div class="hcard-body">
+            <p>Click the <strong>&#9645;</strong> toolbar button to open the shape picker, then click a shape:</p>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;font-size:12px">
+              <span class="htag htag-gray">&#9645; Rectangle</span>
+              <span class="htag htag-gray">&#9634; Rounded Rect</span>
+              <span class="htag htag-gray">&#9675; Ellipse</span>
+              <span class="htag htag-gray">&#9651; Triangle</span>
+              <span class="htag htag-gray">&#9733; Star</span>
+              <span class="htag htag-gray">&#8594; Arrow</span>
+              <span class="htag htag-gray">/ Line</span>
+              <span class="htag htag-gray">&#9671; Diamond</span>
+            </div>
+            <p style="margin-top:10px">Shapes are inserted at the center of the canvas at a default size. Drag to reposition, use handles to resize. Use the Properties panel to change fill and border.</p>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="text bold italic underline font family size formatting toolbar ctrl b i u">
+          <div class="hcard-title">T Text &amp; Formatting</div>
+          <div class="hcard-body">
+            <p>Select a text object, then use the toolbar or shortcuts:</p>
+            <table>
+              <tr><th>Action</th><th>How</th></tr>
+              <tr><td>Bold</td><td><kbd>Ctrl+B</kbd> or toolbar <strong>B</strong></td></tr>
+              <tr><td>Italic</td><td><kbd>Ctrl+I</kbd> or toolbar <em>I</em></td></tr>
+              <tr><td>Underline</td><td><kbd>Ctrl+U</kbd> or toolbar <u>U</u></td></tr>
+              <tr><td>Font family</td><td>Toolbar dropdown (Plus Jakarta Sans, Inter, Arial…)</td></tr>
+              <tr><td>Font size</td><td>Toolbar number input (1–400 pt)</td></tr>
+            </table>
+            <p style="margin-top:8px">Double-click a text object to enter <strong>inline editing mode</strong> — you can then select individual words and apply formatting to them independently.</p>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="arrange align layer group ungroup bring forward send backward front back center distribute">
+          <div class="hcard-title">&#10021; Arrange &amp; Align</div>
+          <div class="hcard-body">
+            <ul>
+              <li><strong>Align buttons</strong> (toolbar): &#8592; left · &#8596; center · &#8594; right · &#8593; top · &#8597; middle · &#8595; bottom — aligns selected object(s) relative to the slide</li>
+              <li><strong>Arrange menu</strong> (menu bar): Bring Forward, Send Backward, Bring to Front, Send to Back</li>
+              <li><strong>Group</strong> multiple selected objects with <kbd>Ctrl+G</kbd>; they move and resize as one unit</li>
+              <li><strong>Ungroup</strong> with <kbd>Ctrl+Shift+G</kbd></li>
+              <li><strong>Right-click</strong> any object for a quick context menu with all arrange options</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="save undo redo history ctrl s z y autosave github badge">
+          <div class="hcard-title">&#128190; Saving &amp; Undo / Redo</div>
+          <div class="hcard-body">
+            <p><strong>Saves are manual</strong> — there is no autosave. Press <kbd>Ctrl+S</kbd> or use File → Save. A <em>Saving…</em> badge appears in the header while the API call is in flight.</p>
+            <p>Undo / Redo history is per-session and unlimited. It resets if you reload the page.</p>
+            <table>
+              <tr><td>Save</td><td><kbd>Ctrl+S</kbd></td></tr>
+              <tr><td>Undo</td><td><kbd>Ctrl+Z</kbd></td></tr>
+              <tr><td>Redo</td><td><kbd>Ctrl+Y</kbd> or <kbd>Ctrl+Shift+Z</kbd></td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="speaker notes slide notes export pptx powerpoint toggle expand collapse textarea">
+          <div class="hcard-title">&#128221; Speaker Notes</div>
+          <div class="hcard-body">
+            <p>The collapsible <strong>Speaker Notes</strong> bar sits below the canvas. Click the bar header to expand or collapse it.</p>
+            <ul>
+              <li>Notes are <strong>per slide</strong> — they switch automatically when you navigate slides</li>
+              <li>Notes are saved as part of the slide JSON (included in Ctrl+S)</li>
+              <li>Exported to PowerPoint's native speaker notes field in PPTX export</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="zoom fit canvas view scale percent plus minus toolbar">
+          <div class="hcard-title">&#128269; Zoom &amp; Fit</div>
+          <div class="hcard-body">
+            <p>Use the toolbar zoom controls on the right side of the toolbar bar:</p>
+            <ul>
+              <li><strong>&#8722;</strong> — Zoom out by 10%</li>
+              <li><strong>Fit</strong> (click the percentage label) — fit the entire slide in the canvas area</li>
+              <li><strong>+</strong> — Zoom in by 10%</li>
+            </ul>
+            <p>Zoom is a view-only setting and does not affect export quality. PPTX and published viewers always render at full 1280×720 resolution.</p>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="presentation settings title brand status visible from expires expiry slug edit modal gear">
+          <div class="hcard-title">&#9881; Presentation Settings</div>
+          <div class="hcard-body">
+            <p>Click <strong>&#9881;</strong> in the editor header (next to the AI and ? buttons) to open the presentation settings modal:</p>
+            <ul>
+              <li><strong>Title</strong> — displayed in the dashboard card and in the published viewer's top bar</li>
+              <li><strong>Brand</strong> — sets the brand tag on the card and which catalogue section it appears in</li>
+              <li><strong>Status</strong> — draft · published · archived</li>
+              <li><strong>Visible from</strong> — datetime; the presentation is hidden from the public catalogue until this date</li>
+              <li><strong>Expires</strong> — datetime; the presentation auto-hides from the public catalogue after this date</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ AI CONTENT ═══ -->
+      <div class="help-section" data-sec="ai">
+        <div class="help-sec-title">AI Content</div>
+        <div class="help-sec-sub">Generate slide titles, subtitles and bullet points using Groq's LLaMA models, proxied through your Cloudflare Worker. The AI is brand-aware and understands the Phyto Evolution product context.</div>
+
+        <div class="hcard" data-tags="ai prerequisites worker url setup required groq cloudflare settings">
+          <div class="hcard-title">&#9888; Prerequisites</div>
+          <div class="hcard-body">
+            <p>The AI generator requires the <strong>AI Worker URL</strong> to be set in Dashboard Settings. See <em>Getting Started → AI Worker Setup</em> for the full setup guide.</p>
+            <p>Without the Worker URL, clicking the AI button in the editor shows an error toast. All other studio features work without AI.</p>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="ai generator generate slide content prompt brief model fast quality llama 8b 70b">
+          <div class="hcard-title">&#10022; Using the AI Slide Generator</div>
+          <div class="hcard-body">
+            <div class="hstep"><div class="hstep-n">1</div><div>Open a presentation in the editor.</div></div>
+            <div class="hstep"><div class="hstep-n">2</div><div>Click <strong>* AI</strong> in the editor header. The AI panel opens.</div></div>
+            <div class="hstep"><div class="hstep-n">3</div><div>Write a <strong>Prompt</strong> — describe the slide's purpose, product, target audience, tone. Be specific for better output.</div></div>
+            <div class="hstep"><div class="hstep-n">4</div><div>Choose a <strong>Model</strong>: <em>Fast</em> (LLaMA 8B — quick, good for drafts) or <em>Quality</em> (LLaMA 70B — slower, richer detail).</div></div>
+            <div class="hstep"><div class="hstep-n">5</div><div>Click <strong>Generate →</strong>. The AI returns a title, optional subtitle, 2–5 bullet points, and speaker notes.</div></div>
+            <div class="hstep"><div class="hstep-n">6</div><div>Review the <strong>Preview</strong> section. Click <strong>Apply to Slide</strong> to place the content onto the current canvas. Click <strong>Regenerate</strong> to try again.</div></div>
+            <div class="hinfo">&#128161; Apply to Slide places text objects on the canvas at preset positions. You can freely move, resize, and restyle them after applying.</div>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="ai brief new presentation create startup auto open prefilled">
+          <div class="hcard-title">&#127381; AI Brief at Creation Time</div>
+          <div class="hcard-body">
+            <p>When creating a new presentation (if a Worker URL is configured), an optional <strong>AI Brief</strong> textarea appears in the creation dialog.</p>
+            <p>Fill it with a high-level description of the presentation. After you click Create and the editor opens, the AI panel <strong>automatically opens</strong> with your brief pre-filled in the Prompt field.</p>
+            <p>This is the fastest way to start a new presentation with AI-generated content on the first slide.</p>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="ai tips better results prompt writing audience brand tone product name">
+          <div class="hcard-title">&#128161; Tips for Better Results</div>
+          <div class="hcard-body">
+            <ul>
+              <li>Include the <strong>brand and product name</strong> — e.g. "Nepenthes Rajah carnivorous plant, TC Plants brand"</li>
+              <li>Specify the <strong>audience</strong> — collectors, wholesale buyers, B2B clients, retail customers</li>
+              <li>State the <strong>tone</strong> — premium/luxury, educational, promotional, scientific</li>
+              <li>Mention <strong>key facts</strong> you want highlighted — price range, rarity, care requirements, lab certification</li>
+              <li>Say how many bullets you want — "3 key benefits", "5 product features"</li>
+            </ul>
+            <p style="margin-top:8px"><strong>Example prompt:</strong> <em>"Opening slide for a Nepenthes Rajah product launch. Highlight rarity (endemic to Borneo, CITES-listed), tissue culture advantage (disease-free, consistent quality), and premium pricing &#8377;1800–3500. Audience: serious collectors. Tone: prestigious and scientific."</em></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ EXPORTING ═══ -->
+      <div class="help-section" data-sec="export">
+        <div class="help-sec-title">Exporting</div>
+        <div class="help-sec-sub">Two export paths: download a PowerPoint file (.pptx) or publish an encrypted live Reveal.js web viewer that auto-appears in the public catalogue.</div>
+
+        <div class="hcard" data-tags="pptx powerpoint export download file slides notes fonts">
+          <div class="hcard-title">&#8681; Download as PowerPoint (.pptx)</div>
+          <div class="hcard-body">
+            <p>Click <strong>&#8681; PPTX</strong> in the editor header. The file downloads immediately — no upload, no server involved.</p>
+            <ul>
+              <li>Preserves <strong>text, shapes, colors, fonts</strong> and speaker notes</li>
+              <li>Images are embedded as base64 data URIs</li>
+              <li>Groups are flattened into individual elements</li>
+              <li>Slide size: <strong>1280 × 720 px</strong> (16:9 widescreen)</li>
+            </ul>
+            <div class="hwarn">&#9888; The PPTX export approximates the Fabric.js canvas — complex rotations, custom shapes and some stroke styles may look slightly different in PowerPoint.</div>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="publish web reveal revealjs viewer url link share online encrypted key fragment">
+          <div class="hcard-title">&#9654; Publish to Web (Reveal.js)</div>
+          <div class="hcard-body">
+            <div class="hstep"><div class="hstep-n">1</div><div>Click <strong>&#9654; Publish</strong> in the editor header.</div></div>
+            <div class="hstep"><div class="hstep-n">2</div><div>The app renders each slide to a JPEG thumbnail, builds an encrypted Reveal.js HTML file, and commits it to <code>view/[slug]/index.html</code> in the GitHub repo.</div></div>
+            <div class="hstep"><div class="hstep-n">3</div><div>The presentation status changes to <strong>Published</strong> and a shareable link is shown. The link contains an encryption key in the URL fragment (<code>#k=…</code>) — the key is <strong>never sent to any server</strong>.</div></div>
+            <div class="hstep"><div class="hstep-n">4</div><div>Anyone with the full URL (including the <code>#k=…</code> fragment) can view the presentation — without needing a GitHub account or PAT.</div></div>
+            <div class="hinfo">&#128279; The viewer loads on GitHub Pages at <code>shiva16.github.io/phyto-studio/view/[slug]/</code>. It requires the <code>#k=…</code> fragment to decrypt — sharing just the base URL shows a "Protected Presentation" lock screen.</div>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="public catalogue catalogue index brand filter expiry visible from archive hide show">
+          <div class="hcard-title">&#128218; Public Catalogue</div>
+          <div class="hcard-body">
+            <p>The public catalogue at <code>catalogue/index.html</code> (on GitHub Pages) lists all <strong>published, non-expired</strong> presentations.</p>
+            <ul>
+              <li>Filterable by brand — All · Phyto Labs · TC Plants · Carnivorous Plants</li>
+              <li>Respects <strong>Visible from</strong> date — future-dated presentations are hidden until their date</li>
+              <li>Respects <strong>Expires</strong> date — past-expiry presentations are hidden automatically</li>
+              <li>Archived presentations are excluded even if they have a viewer URL</li>
+              <li>Each card links directly to the encrypted Reveal.js viewer (full URL with <code>#k=…</code> key)</li>
+            </ul>
+            <div class="hinfo">&#128203; The catalogue reads from an encrypted <code>data/catalogue.enc</code> file — it requires the decryption key (embedded in the page load for the authenticated user) to display titles and thumbnails.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ SHORTCUTS ═══ -->
+      <div class="help-section" data-sec="shortcuts">
+        <div class="help-sec-title">Keyboard Shortcuts</div>
+        <div class="help-sec-sub">All shortcuts are active in the editor view. The ? key opens this panel from anywhere in the editor.</div>
+
+        <div class="hcard" data-tags="keyboard shortcuts hotkeys ctrl save undo redo copy paste duplicate delete group align zoom navigate text bold">
+          <div class="hcard-title">&#9000; All Keyboard Shortcuts</div>
+          <div class="hcard-body">
+            <div class="hkbd-sec">File</div>
+            <div class="hkbd-row"><span class="hkbd-desc">Save</span><kbd>Ctrl+S</kbd></div>
+
+            <div class="hkbd-sec">Edit</div>
+            <div class="hkbd-row"><span class="hkbd-desc">Undo</span><kbd>Ctrl+Z</kbd></div>
+            <div class="hkbd-row"><span class="hkbd-desc">Redo</span><kbd>Ctrl+Y</kbd> &nbsp;/&nbsp; <kbd>Ctrl+Shift+Z</kbd></div>
+            <div class="hkbd-row"><span class="hkbd-desc">Copy</span><kbd>Ctrl+C</kbd></div>
+            <div class="hkbd-row"><span class="hkbd-desc">Paste</span><kbd>Ctrl+V</kbd></div>
+            <div class="hkbd-row"><span class="hkbd-desc">Duplicate</span><kbd>Ctrl+D</kbd></div>
+            <div class="hkbd-row"><span class="hkbd-desc">Select all</span><kbd>Ctrl+A</kbd></div>
+            <div class="hkbd-row"><span class="hkbd-desc">Delete selected</span><kbd>Delete</kbd> &nbsp;/&nbsp; <kbd>Backspace</kbd></div>
+            <div class="hkbd-row"><span class="hkbd-desc">Deselect / Close panel</span><kbd>Esc</kbd></div>
+
+            <div class="hkbd-sec">Tools</div>
+            <div class="hkbd-row"><span class="hkbd-desc">Select tool</span><kbd>V</kbd></div>
+            <div class="hkbd-row"><span class="hkbd-desc">Text tool</span><kbd>T</kbd></div>
+
+            <div class="hkbd-sec">Formatting (text selected)</div>
+            <div class="hkbd-row"><span class="hkbd-desc">Bold</span><kbd>Ctrl+B</kbd></div>
+            <div class="hkbd-row"><span class="hkbd-desc">Italic</span><kbd>Ctrl+I</kbd></div>
+            <div class="hkbd-row"><span class="hkbd-desc">Underline</span><kbd>Ctrl+U</kbd></div>
+
+            <div class="hkbd-sec">Arrange</div>
+            <div class="hkbd-row"><span class="hkbd-desc">Group selected</span><kbd>Ctrl+G</kbd></div>
+            <div class="hkbd-row"><span class="hkbd-desc">Ungroup</span><kbd>Ctrl+Shift+G</kbd></div>
+
+            <div class="hkbd-sec">Slides</div>
+            <div class="hkbd-row"><span class="hkbd-desc">New slide</span><kbd>Ctrl+M</kbd></div>
+            <div class="hkbd-row"><span class="hkbd-desc">Previous slide</span><kbd>PageUp</kbd></div>
+            <div class="hkbd-row"><span class="hkbd-desc">Next slide</span><kbd>PageDown</kbd></div>
+
+            <div class="hkbd-sec">Canvas</div>
+            <div class="hkbd-row"><span class="hkbd-desc">Nudge selected 1 px</span><kbd>&#8592;</kbd> <kbd>&#8593;</kbd> <kbd>&#8594;</kbd> <kbd>&#8595;</kbd></div>
+            <div class="hkbd-row"><span class="hkbd-desc">Nudge selected 10 px</span><kbd>Shift+Arrow</kbd></div>
+
+            <div class="hkbd-sec">Help</div>
+            <div class="hkbd-row"><span class="hkbd-desc">Open this panel</span><kbd>?</kbd></div>
+          </div>
+        </div>
+
+        <div class="hcard" data-tags="menu bar file edit view object arrange keyboard navigation">
+          <div class="hcard-title">&#9776; Menu Bar</div>
+          <div class="hcard-body">
+            <p>The menu bar (File · Edit · View · Object · Arrange) is a mouse/touch interface — all its actions have keyboard equivalents listed above. Menus close on click-outside or Escape.</p>
+            <table>
+              <tr><th>Menu</th><th>Key actions inside</th></tr>
+              <tr><td>File</td><td>Save (Ctrl+S), New Slide (Ctrl+M), Presentation Settings</td></tr>
+              <tr><td>Edit</td><td>Undo, Redo, Copy, Paste, Duplicate, Delete, Select All</td></tr>
+              <tr><td>View</td><td>Zoom In/Out, Fit to Window, Toggle Notes</td></tr>
+              <tr><td>Object</td><td>Bold, Italic, Underline, Group, Ungroup, all align options</td></tr>
+              <tr><td>Arrange</td><td>Bring Forward/Backward, Send to Front/Back, all 6 alignments</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /help-content -->
+  </div><!-- /help-body-wrap -->
+</div><!-- /help-modal -->`;
+  el.addEventListener('click',e=>{if(e.target===el)closeHelpPanel();});
+  el._esc=e=>{if(e.key==='Escape')closeHelpPanel();};
+  document.addEventListener('keydown',el._esc);
   document.body.appendChild(el);
+  setTimeout(()=>showHelpSection(tab),0);
+}
+
+function closeHelpPanel(){
+  const el=document.getElementById('help-overlay');
+  if(!el)return;
+  document.removeEventListener('keydown',el._esc);
+  el.remove();
+}
+
+function showHelpSection(sec){
+  document.querySelectorAll('.help-nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.sec===sec));
+  document.querySelectorAll('.help-section').forEach(s=>s.classList.toggle('on',s.dataset.sec===sec));
+  document.querySelectorAll('.hcard').forEach(c=>c.style.display='');
+  document.getElementById('help-no-results')?.classList.remove('on');
+  document.getElementById('help-search-inp').value='';
+  document.getElementById('help-content')?.scrollTo(0,0);
+}
+
+function helpSearch(q){
+  const lq=q.toLowerCase().trim();
+  if(!lq){
+    const active=document.querySelector('.help-nav-btn.active');
+    showHelpSection(active?.dataset.sec||'start');
+    return;
+  }
+  document.querySelectorAll('.help-section').forEach(s=>s.classList.add('on'));
+  document.querySelectorAll('.hcard').forEach(c=>{
+    const hay=(c.dataset.tags||'')+' '+c.textContent.toLowerCase();
+    c.style.display=hay.includes(lq)?'':'none';
+  });
+  document.querySelectorAll('.help-section').forEach(s=>{
+    const hasVis=[...s.querySelectorAll('.hcard')].some(c=>c.style.display!=='none');
+    s.classList.toggle('on',hasVis);
+  });
+  const total=document.querySelectorAll('.hcard[style*="display: none"]').length;
+  const all=document.querySelectorAll('.hcard').length;
+  document.getElementById('help-no-results')?.classList.toggle('on',total===all);
 }
 
 // ===================== PRESENTATION PREVIEW =====================
