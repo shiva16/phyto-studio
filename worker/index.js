@@ -136,11 +136,10 @@ export default {
         }
 
         if (!nimRes.ok) {
-          return json(
-            { error: data.detail || data.error?.message || 'NIM API error', code: nimRes.status },
-            nimRes.status,
-            cors,
-          );
+          const msg = data.detail || data.error?.message || data.message || data.title
+            || (typeof data === 'string' ? data : null)
+            || `NIM ${nimRes.status}`;
+          return json({ error: msg, code: nimRes.status, raw: rawText.slice(0, 300) }, nimRes.status, cors);
         }
 
         return json(data, 200, cors);
