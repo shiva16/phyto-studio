@@ -2503,6 +2503,7 @@ function isTyping(){
 document.addEventListener('keydown',e=>{
   const ctrl=e.ctrlKey||e.metaKey;
   if(S.view!=='editor')return;
+  if(PT.open)return;  // terminal is fullscreen — let xterm handle all keys
 
   if(ctrl){
     if(e.key==='s'){e.preventDefault();saveAll();return;}
@@ -3389,15 +3390,11 @@ async function ptInit(){
   ro.observe(document.getElementById('pt-xterm'));
 
   PT.term.onKey(({key,domEvent})=>ptHandleKey(key,domEvent));
-  // Paste support — onData fires for typed chars AND paste; deduplicate vs onKey
-  PT.term.onData(data=>{
-    if(data.length>1&&!data.startsWith('\x1b')&&!data.startsWith('\r')&&!data.startsWith('\n')){
-      // Multi-char = paste
-      if(PT.busy) return;
-      const clean=data.replace(/[\r\n]+/g,' ');
-      PT.inputBuf+=clean;
-      ptW(clean);
-    }
+  // Intercept Tab before the browser can move focus away from xterm
+  PT.term.attachCustomKeyEventHandler(ev=>{
+    if(ev.type!=='keydown') return true;
+    if(ev.key==='Tab'){ev.preventDefault();if(!PT.busy)ptTabComplete();return false;}
+    return true;
   });
   PT.inited=true;
   PT.sessionStart=new Date().toISOString();
@@ -3605,7 +3602,6 @@ function ptHandleKey(key,ev){
   if(ev.ctrlKey&&ev.key==='c'){ PT.inputBuf=''; ptW('^C\r\n'); ptPrompt(); return; }
   if(ev.ctrlKey&&ev.key==='l'){ PT.term.clear(); ptPrompt(); return; }
   if(ev.ctrlKey&&ev.key==='r'){ ptHistSearch(); return; }
-  if(ev.key==='Tab'){ ev.preventDefault(); ptTabComplete(); return; }
   if(!ev.ctrlKey&&!ev.altKey&&!ev.metaKey&&key.length===1){ PT.inputBuf+=key; ptW(key); }
 }
 
@@ -4215,12 +4211,24 @@ function ptInitDragDrop(){
     e.preventDefault();overlay.classList.remove('active');
     for(const f of Array.from(e.dataTransfer.files)) await ptHandleFile(f);
   });
+  // Text paste — capture before xterm's textarea handler so we control input insertion
+  zone.addEventListener('paste',e=>{
+    const text=e.clipboardData?.getData('text/plain');
+    if(!text)return;
+    e.preventDefault();e.stopPropagation();
+    if(PT.busy)return;
+    const clean=text.replace(/[\r\n]+/g,' ');
+    PT.inputBuf+=clean;ptW(clean);
+    PT.term.focus();
+  },{capture:true});
+  // Image paste — document-level capture, only when terminal is open
   document.addEventListener('paste',async e=>{
+    if(!PT.open)return;
     const img=Array.from(e.clipboardData?.items||[]).find(i=>i.type.startsWith('image/'));
     if(!img)return;
     e.preventDefault();e.stopPropagation();
     await ptHandleFile(img.getAsFile(),true);
-  },true);
+  },{capture:true});
 }
 async function ptHandleFile(file,isClipboard=false){
   if(!file)return;

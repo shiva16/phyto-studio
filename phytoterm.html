@@ -399,12 +399,11 @@ async function ptInit() {
   ro.observe(document.getElementById('pt-xterm'));
 
   PT.term.onKey(({key,domEvent}) => ptHandleKey(key,domEvent));
-  PT.term.onData(data => {
-    if(data.length>1&&!data.startsWith('\x1b')&&!data.startsWith('\r')&&!data.startsWith('\n')) {
-      if(PT.busy) return;
-      const clean = data.replace(/[\r\n]+/g,' ');
-      PT.inputBuf += clean; ptW(clean);
-    }
+  // Intercept Tab before the browser can move focus away from xterm
+  PT.term.attachCustomKeyEventHandler(ev=>{
+    if(ev.type!=='keydown') return true;
+    if(ev.key==='Tab'){ev.preventDefault();if(!PT.busy)ptTabComplete();return false;}
+    return true;
   });
   PT.inited = true;
   PT.sessionStart = new Date().toISOString();
@@ -589,7 +588,6 @@ function ptHandleKey(key, ev) {
   if(ev.ctrlKey&&ev.key==='c'){PT.inputBuf='';ptW('^C\r\n');ptPrompt();return;}
   if(ev.ctrlKey&&ev.key==='l'){PT.term.clear();ptPrompt();return;}
   if(ev.ctrlKey&&ev.key==='r'){ptHistSearch();return;}
-  if(ev.key==='Tab'){ev.preventDefault();ptTabComplete();return;}
   if(!ev.ctrlKey&&!ev.altKey&&!ev.metaKey&&key.length===1){PT.inputBuf+=key;ptW(key);}
 }
 
@@ -1288,13 +1286,24 @@ function ptInitDragDrop() {
     for(const f of Array.from(e.dataTransfer.files)) await ptHandleFile(f);
   });
 
-  // Image paste — capture before xterm eats the event
+  // Text paste — capture before xterm's textarea handler so we control insertion
+  zone.addEventListener('paste', e => {
+    const text = e.clipboardData?.getData('text/plain');
+    if(!text) return;
+    e.preventDefault(); e.stopPropagation();
+    if(PT.busy) return;
+    const clean = text.replace(/[\r\n]+/g,' ');
+    PT.inputBuf += clean; ptW(clean);
+    PT.term.focus();
+  }, {capture:true});
+
+  // Image paste — document-level capture
   document.addEventListener('paste', async e => {
     const img = Array.from(e.clipboardData?.items||[]).find(i=>i.type.startsWith('image/'));
     if(!img) return;
     e.preventDefault(); e.stopPropagation();
     await ptHandleFile(img.getAsFile(), true);
-  }, true);
+  }, {capture:true});
 }
 
 async function ptHandleFile(file, isClipboard=false) {
