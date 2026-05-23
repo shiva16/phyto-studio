@@ -7,7 +7,6 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
 <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
-<script src="https://js.puter.com/v2/"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:#0d1117;color:#e6edf3;font-family:'Cascadia Code','Fira Code','Courier New',monospace;overflow:hidden}
@@ -125,9 +124,15 @@ html,body{height:100%;background:#0d1117;color:#e6edf3;font-family:'Cascadia Cod
       <option>main</option>
     </select>
     <div class="pt-model-pills">
-      <button class="pt-mpill active" data-model="claude-sonnet-4-6" onclick="ptSetModel('claude-sonnet-4-6')">Sonnet</button>
-      <button class="pt-mpill" data-model="deepseek/deepseek-r1-0528" onclick="ptSetModel('deepseek/deepseek-r1-0528')">DeepSeek</button>
-      <button class="pt-mpill" data-model="openai/gpt-5.4-nano" onclick="ptSetModel('openai/gpt-5.4-nano')">GPT nano</button>
+      <button class="pt-mpill active" data-model="fast" onclick="ptSetModel('fast')" title="Groq llama-3.1-8b-instant">Fast</button>
+      <button class="pt-mpill" data-model="quality" onclick="ptSetModel('quality')" title="Groq llama-3.3-70b-versatile">Quality</button>
+      <button class="pt-mpill" data-model="nim" onclick="ptSetModel('nim')" title="NVIDIA NIM — set key with: config nim &lt;key&gt;">NIM</button>
+    </div>
+    <div id="pt-token-bar" style="display:none;align-items:center;gap:5px;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:3px 9px;font-size:11px;font-family:system-ui,sans-serif;white-space:nowrap;flex-shrink:0" title="Token usage this session">
+      <span style="color:#3fb950">↑</span><span id="pt-tok-in" style="color:#c9d1d9">0</span>
+      <span style="color:#8b949e;margin:0 2px">·</span>
+      <span style="color:#58a6ff">↓</span><span id="pt-tok-out" style="color:#c9d1d9">0</span>
+      <span style="color:#6e7681;margin-left:4px" id="pt-tok-cost"></span>
     </div>
     <div class="pt-hdr-right">
       <span class="pt-user-lbl" id="pt-user-lbl"></span>
@@ -144,6 +149,9 @@ html,body{height:100%;background:#0d1117;color:#e6edf3;font-family:'Cascadia Cod
 <script>
 // ── Standalone state (no Studio dependency) ──────────────────────────────
 const PT_REPO = 'phyto-term';
+const DEFAULT_WORKER = 'https://studio.carnivorousplants-in.workers.dev';
+const NIM_BASE = 'https://integrate.api.nvidia.com/v1/chat/completions';
+const NIM_DEFAULT_MODEL = 'nvidia/llama-3.1-nemotron-70b-instruct';
 
 let _PAT = sessionStorage.getItem('pt_pat') || '';
 let _KEY = null; // AES-256-GCM key, derived from PAT
@@ -152,11 +160,14 @@ const PT = {
   open: false, inited: false,
   term: null, fitAddon: null,
   repo: '', branch: 'main', path: '',
-  model: 'claude-sonnet-4-6',
+  model: 'fast',
+  workerUrl: sessionStorage.getItem('pt_worker') || DEFAULT_WORKER,
+  nimKey: '', nimModel: NIM_DEFAULT_MODEL,
   messages: [],
   transcript: [], sessionStart: null,
   inputBuf: '', cmdHistory: [], histIdx: -1,
   busy: false, ghUser: null, ptOwner: null,
+  usage: { input: 0, output: 0, calls: 0 },
 };
 
 // ── AES-256-GCM ───────────────────────────────────────────────────────────
@@ -239,7 +250,8 @@ function ptSaveSessionState() {
   try {
     sessionStorage.setItem('pt_state', JSON.stringify({
       repo:PT.repo, branch:PT.branch, path:PT.path, model:PT.model,
-      messages:PT.messages.slice(-40),
+      messages:PT.messages.slice(-40), usage:PT.usage,
+      workerUrl:PT.workerUrl, nimKey:PT.nimKey, nimModel:PT.nimModel,
     }));
   } catch {}
 }
@@ -251,12 +263,38 @@ function ptRestoreSessionState() {
     PT.repo=s.repo||PT.repo; PT.branch=s.branch||PT.branch;
     PT.path=s.path||''; PT.model=s.model||PT.model;
     PT.messages=s.messages||[];
+    if(s.usage) PT.usage=s.usage;
+    if(s.workerUrl) PT.workerUrl=s.workerUrl;
+    if(s.nimKey) PT.nimKey=s.nimKey;
+    if(s.nimModel) PT.nimModel=s.nimModel;
     return true;
   } catch { return false; }
 }
 
+// ── Token display ─────────────────────────────────────────────────────────
+function ptFmtTok(n){return n>=1000?(n/1000).toFixed(1)+'k':String(n);}
+function ptUpdateTokenBar(){
+  const bar=document.getElementById('pt-token-bar');
+  if(!bar)return;
+  if(PT.usage.calls===0){bar.style.display='none';return;}
+  bar.style.display='flex';
+  document.getElementById('pt-tok-in').textContent=ptFmtTok(PT.usage.input);
+  document.getElementById('pt-tok-out').textContent=ptFmtTok(PT.usage.output);
+  // Rough cost estimate per model ($/M tokens)
+  const rates={
+    fast:{in:0.05,out:0.08},
+    quality:{in:0.59,out:0.79},
+    nim:{in:0.20,out:0.20},
+  };
+  const r=rates[PT.model]||{in:0.05,out:0.08};
+  const cost=((PT.usage.input/1e6)*r.in+(PT.usage.output/1e6)*r.out);
+  const el=document.getElementById('pt-tok-cost');
+  if(el)el.textContent=cost>0.001?'~$'+cost.toFixed(4):'';
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────
 async function ptInit() {
+  if(PT.inited)return;
   PT.term = new Terminal({
     theme:{
       background:'#0d1117', foreground:'#e6edf3',
@@ -289,16 +327,12 @@ async function ptInit() {
   PT.inited = true;
   PT.sessionStart = new Date().toISOString();
 
-  document.addEventListener('visibilitychange', () => {
-    if(!document.hidden&&typeof puter!=='undefined') {
-      try{ if(!puter.auth.isSignedIn()) puter.auth.signIn().catch(()=>{}); }catch{}
-    }
-  });
 
-  ptL(C.bgreen+C.b+'  PhytoTerm'+C.r+C.gray+'  standalone · all-encrypted'+C.r);
+  ptL(C.bgreen+C.b+'  PhytoTerm'+C.r+C.gray+'  standalone · all-encrypted · Groq+NIM'+C.r);
   ptL(C.gray+'  Booting…'+C.r);
 
   const hadState = ptRestoreSessionState();
+  ptUpdateTokenBar();
   await ptGhBoot(hadState);
 
   ptL('');
@@ -352,12 +386,23 @@ async function ptEnsureDataRepo() {
 }
 
 async function ptLoadContext() {
-  try { const r=await ptPrivateGet('context/state.enc'); if(r){ const s=JSON.parse(await aesDecrypt(r)); PT.repo=s.repo||PT.repo; PT.branch=s.branch||PT.branch; PT.path=s.path||''; PT.model=s.model||PT.model; } } catch {}
+  try {
+    const r=await ptPrivateGet('context/state.enc');
+    if(r){
+      const s=JSON.parse(await aesDecrypt(r));
+      PT.repo=s.repo||PT.repo; PT.branch=s.branch||PT.branch;
+      PT.path=s.path||''; PT.model=s.model||PT.model;
+      if(s.workerUrl){PT.workerUrl=s.workerUrl;sessionStorage.setItem('pt_worker',s.workerUrl);}
+      if(s.nimKey) PT.nimKey=s.nimKey;
+      if(s.nimModel) PT.nimModel=s.nimModel;
+    }
+  } catch {}
   try { const r=await ptPrivateGet('context/conversation.enc'); if(r){ PT.messages=JSON.parse(await aesDecrypt(r)); } } catch {}
 }
 
 async function ptSaveContext() {
-  await ptPrivatePut('context/state.enc', await aesEncrypt(JSON.stringify({repo:PT.repo,branch:PT.branch,path:PT.path,model:PT.model})), 'chore: update state');
+  const state={repo:PT.repo,branch:PT.branch,path:PT.path,model:PT.model,workerUrl:PT.workerUrl,nimKey:PT.nimKey,nimModel:PT.nimModel};
+  await ptPrivatePut('context/state.enc', await aesEncrypt(JSON.stringify(state)), 'chore: update state');
   await ptPrivatePut('context/conversation.enc', await aesEncrypt(JSON.stringify(PT.messages.slice(-40))), 'chore: update context');
 }
 
@@ -544,6 +589,8 @@ async function ptRun(cmd) {
       case 'open':      ptCmdOpen(args[0]); break;
       case 'new-repo':  await ptCmdNewRepo(args[0],args.includes('--private')); break;
       case 'sessions':  await ptCmdSessions(); break;
+      case 'tokens': case 'usage': ptCmdTokens(); break;
+      case 'config':  await ptCmdConfig(args[0],args.slice(1).join(' ')); break;
       case '/review':   await ptAskClaude('Review this file and give detailed feedback: '+rest); break;
       case '/explain':  await ptAskClaude('Explain what this file does in detail: '+rest); break;
       case '/improve':  await ptAskClaude('Improve this file — better code, best practices: '+rest); break;
@@ -664,20 +711,20 @@ async function ptCmdBranches() {
 }
 
 async function ptCmdLog(n) {
-  const cs=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/commits?ref='+PT.branch+'&per_page='+n);
+  const cs=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/commits?sha='+PT.branch+'&per_page='+n);
   cs.forEach(c=>ptL(C.yellow+c.sha.slice(0,7)+C.r+'  '+C.gray+new Date(c.commit.author.date).toLocaleDateString('en-IN',{day:'numeric',month:'short'})+C.r+'  '+c.commit.message.split('\n')[0]));
 }
 
 async function ptCmdStatus() {
   ptL(C.gray+'Repo: '+C.cyan+PT.repo+C.r+'  branch: '+C.cyan+PT.branch+C.r);
-  try{const cs=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/commits?ref='+PT.branch+'&per_page=1');if(cs.length)ptL(C.gray+'HEAD: '+C.yellow+cs[0].sha.slice(0,7)+C.r+' '+cs[0].commit.message.split('\n')[0]);}catch{}
+  try{const cs=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/commits?sha='+PT.branch+'&per_page=1');if(cs.length)ptL(C.gray+'HEAD: '+C.yellow+cs[0].sha.slice(0,7)+C.r+' '+cs[0].commit.message.split('\n')[0]);}catch{}
 }
 
 async function ptCmdDiff(file) {
   if(!file){ptL(C.gray+'Usage: diff <file>'+C.r);return;}
   const path=ptResolvePath(file);
   try{
-    const cs=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/commits?ref='+PT.branch+'&per_page=2&path='+path);
+    const cs=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/commits?sha='+PT.branch+'&per_page=2&path='+path);
     if(cs.length<2){ptL(C.gray+'Only one commit for this file.'+C.r);return;}
     const cmp=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/compare/'+cs[1].sha+'...'+cs[0].sha);
     const f=cmp.files&&cmp.files.find(f=>f.filename===path);
@@ -692,7 +739,7 @@ async function ptCmdDiff(file) {
   }catch(e){ptL(C.red+e.message+C.r);}
 }
 
-async function ptCmdCreate(file){if(!file){ptL(C.gray+'Usage: create <file>'+C.r);return;}const path=ptResolvePath(file);await ptApiPut('https://api.github.com/repos/'+PT.repo+'/contents/'+path,{message:'chore: create '+path,content:btoa(''),branch:PT.branch});ptL(C.green+'✓ Created '+path+C.r);}
+async function ptCmdCreate(file){if(!file){ptL(C.gray+'Usage: create <file>'+C.r);return;}const path=ptResolvePath(file);const body={message:'chore: create '+path,content:btoa(''),branch:PT.branch};try{const ex=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/contents/'+path+'?ref='+PT.branch);body.sha=ex.sha;}catch{}await ptApiPut('https://api.github.com/repos/'+PT.repo+'/contents/'+path,body);ptL(C.green+'✓ Created '+path+C.r);}
 async function ptCmdRm(file){if(!file){ptL(C.gray+'Usage: rm <file>'+C.r);return;}const path=ptResolvePath(file);const ex=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/contents/'+path+'?ref='+PT.branch);await ptApiDel('https://api.github.com/repos/'+PT.repo+'/contents/'+path,{message:'chore: delete '+path,sha:ex.sha,branch:PT.branch});ptL(C.green+'✓ Deleted '+path+C.r);}
 async function ptCmdMv(src,dst){if(!src||!dst){ptL(C.gray+'Usage: mv <src> <dst>'+C.r);return;}const sp=ptResolvePath(src),dp=ptResolvePath(dst);const sd=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/contents/'+sp+'?ref='+PT.branch);await ptApiPut('https://api.github.com/repos/'+PT.repo+'/contents/'+dp,{message:'chore: move '+sp+' → '+dp,content:sd.content.replace(/\n/g,''),branch:PT.branch});await ptApiDel('https://api.github.com/repos/'+PT.repo+'/contents/'+sp,{message:'chore: move (rm) '+sp,sha:sd.sha,branch:PT.branch});ptL(C.green+'✓ Moved '+sp+' → '+dp+C.r);}
 async function ptCmdCp(src,dst){if(!src||!dst){ptL(C.gray+'Usage: cp <src> <dst>'+C.r);return;}const sp=ptResolvePath(src),dp=ptResolvePath(dst);const sd=await ptApiGet('https://api.github.com/repos/'+PT.repo+'/contents/'+sp+'?ref='+PT.branch);await ptApiPut('https://api.github.com/repos/'+PT.repo+'/contents/'+dp,{message:'chore: copy '+sp+' → '+dp,content:sd.content.replace(/\n/g,''),branch:PT.branch});ptL(C.green+'✓ Copied '+sp+' → '+dp+C.r);}
@@ -707,12 +754,75 @@ async function ptCmdSessions() {
   try{const files=await ptApiGet('https://api.github.com/repos/'+PT.ptOwner+'/contents/sessions?ref=main');const sorted=files.filter(f=>f.name.endsWith('.enc')).sort((a,b)=>b.name.localeCompare(a.name)).slice(0,20);if(!sorted.length){ptL(C.gray+'No sessions yet.'+C.r);return;}ptL(C.b+C.white+'Saved sessions ('+sorted.length+'):'+C.r);sorted.forEach((f,i)=>ptL('  '+C.cyan+(i+1)+'.'+C.r+' '+f.name.replace('.enc','')+'  '+C.gray+ptFmtSize(f.size)+C.r));ptL(C.gray+'All sessions encrypted with your PAT.'+C.r);}catch(e){ptL(C.red+e.message+C.r);}
 }
 
+function ptCmdTokens() {
+  const {input,output,calls}=PT.usage;
+  const total=input+output;
+  ptL('');
+  ptL(C.b+C.white+'Token usage — this session'+C.r);
+  ptL(C.gray+'─'.repeat(40)+C.r);
+  ptL('  '+C.gray+'Calls:       '+C.r+C.cyan+calls+C.r);
+  ptL('  '+C.gray+'Input:       '+C.r+C.green+input.toLocaleString()+C.r+' tokens');
+  ptL('  '+C.gray+'Output:      '+C.r+C.blue+output.toLocaleString()+C.r+' tokens');
+  ptL('  '+C.gray+'Total:       '+C.r+C.white+total.toLocaleString()+C.r+' tokens');
+  ptL('');
+  ptL(C.b+'Cost estimates:'+C.r);
+  const models={fast:{n:'Groq llama-3.1-8b',in:0.05,out:0.08},quality:{n:'Groq llama-3.3-70b',in:0.59,out:0.79},nim:{n:'NVIDIA NIM',in:0.20,out:0.20}};
+  Object.entries(models).forEach(([id,m])=>{
+    const cost=((input/1e6)*m.in+(output/1e6)*m.out);
+    const cur=id===PT.model;
+    ptL('  '+(cur?C.green+'→ '+C.r:'  ')+C.gray+m.n.padEnd(20)+C.r+'$'+cost.toFixed(5)+'  '+C.gray+'($'+m.in+'/M in · $'+m.out+'/M out)'+C.r);
+  });
+  ptL('');
+  ptL(C.gray+'Groq rate limits: 14,400 req/day · 500k tok/min (8b) · 100k tok/min (70b)'+C.r);
+  ptL(C.gray+'NVIDIA NIM: 1,000 API calls free/month per account'+C.r);
+  ptL(C.gray+'Input token counts without API data are estimated (~4 chars/tok).'+C.r);
+}
+
 function ptSetModel(name) {
-  const a={sonnet:'claude-sonnet-4-6',claude:'claude-sonnet-4-6',deepseek:'deepseek/deepseek-r1-0528',r1:'deepseek/deepseek-r1-0528',nano:'openai/gpt-5.4-nano',gpt:'openai/gpt-5.4-nano',fast:'openai/gpt-5.4-nano'};
-  if(!name){ptL('Current: '+C.cyan+PT.model+C.r);return;}
+  const a={f:'fast',q:'quality',70:'quality',8:'fast',nim:'nim',nvidia:'nim',fast:'fast',quality:'quality'};
+  if(!name){
+    ptL('Current: '+C.cyan+PT.model+C.r);
+    ptL(C.gray+'  fast    → Groq llama-3.1-8b-instant'+C.r);
+    ptL(C.gray+'  quality → Groq llama-3.3-70b-versatile'+C.r);
+    ptL(C.gray+'  nim     → NVIDIA '+PT.nimModel+C.r+(PT.nimKey?'':C.yellow+'  (no key — run: config nim <key>)'+C.r));
+    return;
+  }
   PT.model=a[name.toLowerCase()]||name;
   document.querySelectorAll('.pt-mpill').forEach(b=>b.classList.toggle('active',b.dataset.model===PT.model));
+  ptUpdateTokenBar();
   ptL(C.green+'Model → '+C.cyan+PT.model+C.r);
+  if(PT.model==='nim'&&!PT.nimKey) ptL(C.yellow+'NVIDIA NIM key not set. Run: config nim <your_key>'+C.r);
+}
+
+async function ptCmdConfig(key,val) {
+  if(!key){
+    ptL(C.b+'Config:'+C.r);
+    ptL('  '+C.cyan+'worker  '+C.r+PT.workerUrl);
+    ptL('  '+C.cyan+'nim     '+C.r+(PT.nimKey?'[set]'+C.gray+' (use: config nim key to update)'+C.r:C.yellow+'[not set]'+C.r));
+    ptL('  '+C.cyan+'nim-model '+C.r+PT.nimModel);
+    ptL('');
+    ptL(C.gray+'  config worker <url>       — set Groq CF Worker URL'+C.r);
+    ptL(C.gray+'  config nim <nvapi-key>    — set NVIDIA NIM API key (saved encrypted)'+C.r);
+    ptL(C.gray+'  config nim-model <name>   — set NIM model name'+C.r);
+    return;
+  }
+  if(key==='worker'){
+    if(!val){ptL(C.gray+'Usage: config worker <url>'+C.r);return;}
+    PT.workerUrl=val.startsWith('http')?val:'https://'+val;
+    sessionStorage.setItem('pt_worker',PT.workerUrl);
+    ptL(C.green+'✓ Worker URL set: '+PT.workerUrl+C.r);
+  } else if(key==='nim'){
+    if(!val){ptL(C.gray+'Usage: config nim <nvapi-key>'+C.r);return;}
+    PT.nimKey=val;
+    ptL(C.green+'✓ NVIDIA NIM key saved (will persist encrypted on exit)'+C.r);
+  } else if(key==='nim-model'||key==='nimmodel'){
+    if(!val){ptL(C.gray+'Usage: config nim-model <model-name>'+C.r);ptL(C.gray+'  e.g. nvidia/llama-3.1-nemotron-70b-instruct'+C.r);ptL(C.gray+'       meta/llama-3.1-8b-instruct'+C.r);ptL(C.gray+'       mistralai/mistral-7b-instruct-v0.3'+C.r);return;}
+    PT.nimModel=val;
+    ptL(C.green+'✓ NIM model → '+val+C.r);
+  } else {
+    ptL(C.red+'Unknown config key: '+key+'. Try: worker, nim, nim-model'+C.r);
+  }
+  ptSaveSessionState();
 }
 
 async function ptExit() {
@@ -732,8 +842,9 @@ function ptHelp() {
     ['Navigation',  [['ls [path]','List directory'],['cat <file>','Show file (JSON/CSV highlighted)'],['head/tail <file>','First/last 30 lines'],['cd <path>','Navigate'],['pwd','Current path'],['find <pat> [dir]','Find files'],['grep <pat> <file>','Search in file'],['wc <file>','Word/line/char count']]],
     ['File ops',    [['create <file>','Create file'],['rm <file>','Delete file'],['mv <src> <dst>','Move/rename'],['cp <src> <dst>','Copy'],['diff <file>','Diff vs previous commit']]],
     ['Repo & Git',  [['repos','All repos'],['repo <name>','Switch repo'],['branches','List branches'],['branch <name>','Switch branch'],['log [n]','Last n commits'],['status','Repo info + HEAD'],['issues [n]','Open issues'],['prs','Open pull requests'],['pr "title"','Create pull request'],['new-repo <n>','Create repo (--private)']]],
-    ['Sessions',    [['sessions','List encrypted session logs'],['open <url>','Open in browser'],['whoami','User + encrypted store'],['reset','Clear AI context'],['clear','Clear screen'],['exit','Save session + sign out']]],
-    ['AI',          [['/model sonnet|deepseek|nano','Switch AI model'],['<anything>','Ask Claude (multi-step)'],['/review <file>','Code review'],['/explain <file>','Explain file'],['/improve <file>','Rewrite & improve'],['/summarize [n]','Summarize commits'],['/todos','Find TODOs in repo'],['/audit','Security audit'],['/readme','Generate README']]],
+    ['Sessions',    [['sessions','List encrypted session logs'],['tokens','Token usage + cost estimate'],['open <url>','Open in browser'],['whoami','User + encrypted store'],['reset','Clear AI context'],['clear','Clear screen'],['exit','Save session + sign out']]],
+    ['AI',          [['/model fast|quality|nim','Switch AI model (Groq/NIM)'],['<anything>','Ask AI (multi-step agentic)'],['/review <file>','Code review'],['/explain <file>','Explain file'],['/improve <file>','Rewrite & improve'],['/summarize [n]','Summarize commits'],['/todos','Find TODOs in repo'],['/audit','Security audit'],['/readme','Generate README'],['/model','Show model + rate limits']]],
+    ['Config',      [['config','Show all settings'],['config worker <url>','Set Groq CF Worker URL'],['config nim <key>','Set NVIDIA NIM API key (encrypted)'],['config nim-model <name>','Set NIM model name']]],
   ];
   ptL('');
   ptL(C.b+C.white+'PhytoTerm'+C.r+'  '+C.gray+(PT.ptOwner||'')+'  🔒 all-encrypted'+C.r);
@@ -747,7 +858,8 @@ function ptHelp() {
 }
 
 // ── AI agentic loop ───────────────────────────────────────────────────────
-const PT_SYS='You are PhytoTerm, an AI dev assistant. Help build and maintain web apps via GitHub.\n\n'+
+const PT_SYS='You are PhytoTerm, an AI dev assistant embedded in a GitHub-connected terminal.\n'+
+  'Help build and maintain web apps. Repo context injected per turn.\n\n'+
   'Perform GitHub actions using EXACTLY ONE action block per response:\n'+
   '<gh>{"action":"list_files","path":"src/"}</gh>\n'+
   '<gh>{"action":"read_file","path":"index.html"}</gh>\n'+
@@ -755,26 +867,59 @@ const PT_SYS='You are PhytoTerm, an AI dev assistant. Help build and maintain we
   '<gh>{"action":"delete_file","path":"old.txt","message":"chore: remove"}</gh>\n'+
   '<gh>{"action":"get_commits","n":5}</gh>\n'+
   '<gh>{"action":"create_issue","title":"T","body":"B"}</gh>\n\n'+
-  'Rules: one action per response; always write COMPLETE file content; plain terminal text output only.';
+  'Rules: one action per response; always write COMPLETE file content; plain terminal text output only; no markdown.';
+
+async function ptCallGroq(messages) {
+  const r=await fetch(PT.workerUrl+'/generate',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({messages, model:PT.model==='quality'?'quality':'fast'}),
+  });
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Worker '+r.status);}
+  return r.json();
+}
+
+async function ptCallNim(messages) {
+  if(!PT.nimKey) throw new Error('NIM key not set — run: config nim <your-key>');
+  const r=await fetch(NIM_BASE,{
+    method:'POST',
+    headers:{Authorization:'Bearer '+PT.nimKey,'Content-Type':'application/json'},
+    body:JSON.stringify({model:PT.nimModel,messages,max_tokens:2048,temperature:0.7}),
+  });
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error((e.detail||e.error)||'NIM '+r.status);}
+  return r.json();
+}
+
+async function ptCallAI(messages) {
+  if(PT.model==='nim') return ptCallNim(messages);
+  return ptCallGroq(messages);
+}
 
 async function ptAskClaude(userInput) {
   PT.messages.push({role:'user',content:userInput});
-  let dotN=0;
-  const tick=()=>{ptClear();ptW(C.gray+'✦ '+['·','··','···','····'][dotN++%4]+C.r);};
-  tick(); const thinkId=setInterval(tick,350);
+  let dotN=0; let thinkId=null;
+  const startThink=()=>{stopThink();thinkId=setInterval(()=>{ptClear();ptW(C.gray+'✦ '+['·','··','···','····'][dotN++%4]+C.r);},350);ptClear();ptW(C.gray+'✦ ·'+C.r);};
+  const stopThink=()=>{if(thinkId){clearInterval(thinkId);thinkId=null;}ptClear();};
+  startThink();
   try {
     for(let hop=0;hop<5;hop++){
-      if(!PT.busy){clearInterval(thinkId);ptClear();return;}
+      if(!PT.busy){stopThink();return;}
       const msgs=[
         {role:'user',content:PT_SYS+'\n\nContext: repo='+PT.repo+', branch='+PT.branch+', path=/'+(PT.path||'')+', user='+(PT.ghUser||'')},
         {role:'assistant',content:'PhytoTerm ready. Connected to '+PT.repo+' ('+PT.branch+').'},
         ...PT.messages,
       ];
-      const result=await puter.ai.chat(msgs,{model:PT.model});
-      const text=(result&&result.message&&result.message.content&&result.message.content[0]&&result.message.content[0].text)||'';
+      const result=await ptCallAI(msgs);
+      // Track tokens — Groq/NIM both use OpenAI format
+      const u=result.usage||{};
+      PT.usage.input+=(u.prompt_tokens||u.input_tokens||Math.ceil(msgs.reduce((s,m)=>s+(m.content||'').length,0)/4));
+      PT.usage.output+=(u.completion_tokens||u.output_tokens||0);
+      PT.usage.calls++;
+      ptUpdateTokenBar();
+      const text=(result.choices&&result.choices[0]&&result.choices[0].message&&result.choices[0].message.content)||'';
       PT.messages.push({role:'assistant',content:text});
       const m=/<gh>([\s\S]*?)<\/gh>/.exec(text);
-      clearInterval(thinkId); ptClear();
+      stopThink();
       const before=(m?text.slice(0,m.index):text).replace(/<gh>[\s\S]*?<\/gh>/g,'').trim();
       if(before) ptW(before.replace(/\n/g,'\r\n')+'\r\n');
       if(!m) break;
@@ -784,14 +929,11 @@ async function ptAskClaude(userInput) {
       if(after) ptW(after.replace(/\n/g,'\r\n')+'\r\n');
       PT.messages.push({role:'user',content:'[Result]: '+actionResult+'\n\nContinue.'});
       ptLog('gh',actionResult.slice(0,120));
-      dotN=0; tick(); const tid2=setInterval(tick,350);
-      await new Promise(r=>setTimeout(r,80));
-      clearInterval(tid2);
+      startThink();
     }
   } catch(e) {
-    clearInterval(thinkId); ptClear();
-    if((e.message||'').match(/sign|auth/i)){ptL(C.yellow+'Puter sign-in needed. A popup will open…'+C.r);try{await puter.auth.signIn();await ptAskClaude(userInput);return;}catch{}}
-    else ptL(C.red+'AI error: '+e.message+C.r);
+    stopThink();
+    ptL(C.red+'AI error: '+e.message+C.r);
   }
   ptLog('ai',(PT.messages[PT.messages.length-1]||{}).content?.slice(0,200)||'');
   if(PT.messages.length>40) PT.messages=PT.messages.slice(-40);
@@ -806,7 +948,7 @@ async function ptExecGhAction(action) {
     case 'read_file':{ptL(C.gray+'✦ reading '+action.path+'…'+C.r);const data=await ptApiGet(base+'/contents/'+action.path+'?ref='+branch);const content=decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));return 'Contents of '+action.path+' ('+content.split('\n').length+' lines):\n'+content;}
     case 'write_file':{ptL(C.gray+'✦ writing '+action.path+'…'+C.r);let sha;try{sha=(await ptApiGet(base+'/contents/'+action.path+'?ref='+branch)).sha;}catch{}const msg=action.message||'chore: update '+action.path;const body={message:msg,content:btoa(unescape(encodeURIComponent(action.content))),branch};if(sha)body.sha=sha;await ptApiPut(base+'/contents/'+action.path,body);ptL(C.green+'✓ Committed: "'+msg+'"'+C.r);return 'Wrote and committed '+action.path+': "'+msg+'"';}
     case 'delete_file':{ptL(C.gray+'✦ deleting '+action.path+'…'+C.r);const ex=await ptApiGet(base+'/contents/'+action.path+'?ref='+branch);const msg=action.message||'chore: delete '+action.path;await ptApiDel(base+'/contents/'+action.path,{message:msg,sha:ex.sha,branch});ptL(C.green+'✓ Deleted '+action.path+C.r);return 'Deleted '+action.path;}
-    case 'get_commits':{const n=action.n||10;ptL(C.gray+'✦ fetching commits…'+C.r);const cs=await ptApiGet(base+'/commits?ref='+branch+'&per_page='+n);cs.forEach(c=>ptL(C.yellow+c.sha.slice(0,7)+C.r+' '+c.commit.message.split('\n')[0]));return cs.map(c=>c.sha.slice(0,7)+' '+c.commit.message.split('\n')[0]).join('\n');}
+    case 'get_commits':{const n=action.n||10;ptL(C.gray+'✦ fetching commits…'+C.r);const cs=await ptApiGet(base+'/commits?sha='+branch+'&per_page='+n);cs.forEach(c=>ptL(C.yellow+c.sha.slice(0,7)+C.r+' '+c.commit.message.split('\n')[0]));return cs.map(c=>c.sha.slice(0,7)+' '+c.commit.message.split('\n')[0]).join('\n');}
     case 'create_issue':{ptL(C.gray+'✦ creating issue…'+C.r);const issue=await ptApiPost('https://api.github.com/repos/'+repo+'/issues',{title:action.title,body:action.body||''});ptL(C.green+'✓ Issue #'+issue.number+': '+issue.title+C.r);return 'Created issue #'+issue.number;}
     default: return 'Unknown action: '+action.action;
   }
