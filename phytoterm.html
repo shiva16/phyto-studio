@@ -978,11 +978,7 @@ function ptShowModelPicker(model, el) {
   const info = MODEL_INFO[model];
   if(!info){ ptSetModel(model); return; }
 
-  const nimModels=['deepseek','qwen','coder'];
-  const isNim = nimModels.includes(model);
-  const hasKey = isNim && !!PT.nimKey;
   const isCurrent = PT.model===model;
-
   const popup = document.createElement('div');
   popup.id='pt-model-popup';
   popup.dataset.model=model;
@@ -1001,23 +997,10 @@ function ptShowModelPicker(model, el) {
       <div class="pt-popup-section">Good for</div>
       <ul class="pt-popup-list">${info.good.map(g=>`<li>${g}</li>`).join('')}</ul>
       <div class="pt-popup-avoid"><strong style="color:#8b949e">Skip when:</strong> ${info.avoid}</div>
-      ${isNim?`
-        <div class="pt-popup-key-lbl">NVIDIA NIM API Key ${hasKey?'<span style="color:#3fb950;font-weight:400">✓ set</span>':''}</div>
-        <div class="pt-popup-key-row">
-          <input class="pt-popup-key-inp" id="pt-nim-key-inp" type="password" placeholder="${hasKey?'re-enter to update key':'nvapi-…'}" autocomplete="off" spellcheck="false">
-          <button class="pt-popup-key-save" onclick="ptSaveNimKey('${model}')">${hasKey?'Update':'Save &amp; Use'}</button>
-        </div>
-        <div class="pt-popup-key-hint">Get free key → <a href="https://build.nvidia.com" target="_blank">build.nvidia.com</a></div>
-        <div class="pt-popup-btns">
-          ${hasKey?`<button class="pt-popup-use" onclick="ptSelectModel('${model}')">${isCurrent?'✓ Active':'Use this model'}</button>`:''}
-          <button class="pt-popup-cancel" onclick="ptCloseModelPopup()">Cancel</button>
-        </div>
-      `:`
-        <div class="pt-popup-btns">
-          <button class="pt-popup-use" onclick="ptSelectModel('${model}')">${isCurrent?'✓ Active':'Use this model'}</button>
-          <button class="pt-popup-cancel" onclick="ptCloseModelPopup()">Cancel</button>
-        </div>
-      `}
+      <div class="pt-popup-btns">
+        <button class="pt-popup-use" onclick="ptSelectModel('${model}')">${isCurrent?'✓ Active':'Use this model'}</button>
+        <button class="pt-popup-cancel" onclick="ptCloseModelPopup()">Cancel</button>
+      </div>
     </div>`;
 
   // Position below the pill
@@ -1172,13 +1155,17 @@ const NIM_MODEL_IDS = {
 };
 
 async function ptCallNim(messages) {
-  if(!PT.nimKey) throw new Error('NIM key not set — run: config nim <your-key>');
   const modelId = NIM_MODEL_IDS[PT.model] || PT.nimModel;
-  const r=await fetch(NIM_BASE,{
-    method:'POST',
-    headers:{Authorization:'Bearer '+PT.nimKey,'Content-Type':'application/json'},
-    body:JSON.stringify({model:modelId,messages,max_tokens:2048,temperature:0.7}),
-  });
+  const workerUrl = (PT.workerUrl||DEFAULT_WORKER).replace(/\/+$/,'');
+  // Primary: route through CF Worker (key stored as Worker secret)
+  if(workerUrl){
+    const r=await fetch(workerUrl+'/nim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:modelId,messages,max_tokens:2048,temperature:0.7})});
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Worker NIM '+r.status);}
+    return r.json();
+  }
+  // Fallback: direct NIM with browser key (config nim <key>)
+  if(!PT.nimKey) throw new Error('NIM key not set — run: config nim <nvapi-key>');
+  const r=await fetch(NIM_BASE,{method:'POST',headers:{Authorization:'Bearer '+PT.nimKey,'Content-Type':'application/json'},body:JSON.stringify({model:modelId,messages,max_tokens:2048,temperature:0.7})});
   if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error((e.detail||e.error||e.message)||'NIM '+r.status);}
   return r.json();
 }
