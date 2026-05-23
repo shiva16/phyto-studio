@@ -1,119 +1,71 @@
 {
   "presentations": [
     {
-      "slug": "phytolabs-intro-2026",
-      "title": "Phyto Labs \u2014 Brand Introduction",
+      "slug": "phytolabs-services-2026",
+      "title": "Phyto Labs â Services & Capabilities 2026",
       "brand": "phytolabs",
       "status": "published",
-      "description": "Who we are, what we do, and why partners choose Phyto Labs for tissue culture.",
+      "expires": null,
+      "created": "2026-05-22",
+      "updated": "2026-05-22"
+    },
+    {
+      "slug": "tcplants-catalogue-2026",
+      "title": "TC Plants â Lab-Grown Plant Catalogue 2026",
+      "brand": "tcplants",
+      "status": "published",
+      "expires": null,
+      "created": "2026-05-22",
+      "updated": "2026-05-22"
+    },
+    {
+      "slug": "carnivorous-plants-catalogue-2026",
+      "title": "Carnivorous Plants â Collector Catalogue 2026",
+      "brand": "carnivorousplants",
+      "status": "published",
+      "expires": null,
+      "created": "2026-05-22",
+      "updated": "2026-05-22"
+    },
+    {
+      "slug": "nepenthes-sales-2026-06",
+      "title": "Nepenthes sales 2026-06",
+      "brand": "carnivorousplants",
+      "status": "published",
+      "visible_from": "2026-05-22T16:36",
+      "expires": "2026-05-23T16:36",
+      "created": "2026-05-22",
+      "updated": "2026-05-22"
+    },
+    {
+      "slug": "phytolabs-intro-2026",
+      "title": "Phyto Labs — Brand Introduction",
+      "brand": "phytolabs",
+      "status": "published",
       "created": "2026-05-22T00:00:00.000Z",
       "updated": "2026-05-22T00:00:00.000Z"
     },
     {
       "slug": "phytolabs-catalogue-2026",
-      "title": "Phyto Labs \u2014 Tissue Culture Product Catalogue",
+      "title": "Phyto Labs — Tissue Culture Product Catalogue",
       "brand": "phytolabs",
       "status": "published",
-      "description": "Full catalogue of tissue culture species available for bulk order from Phyto Labs.",
-      "created": "2026-05-22T00:00:00.000Z",
-      "updated": "2026-05-22T00:00:00.000Z"
-    },
-    {
-      "slug": "phytolabs-ad-2026",
-      "title": "Phyto Labs \u2014 B2B Partnership Ad",
-      "brand": "phytolabs",
-      "status": "draft",
-      "description": "Trade advertisement targeting nursery owners and wholesale plant buyers.",
-      "created": "2026-05-22T00:00:00.000Z",
-      "updated": "2026-05-22T00:00:00.000Z"
-    },
-    {
-      "slug": "phytolabs-poster-2026",
-      "title": "Phyto Labs \u2014 Quality Assurance Poster",
-      "brand": "phytolabs",
-      "status": "draft",
-      "description": "One-slide poster for trade shows highlighting lab certification and quality.",
       "created": "2026-05-22T00:00:00.000Z",
       "updated": "2026-05-22T00:00:00.000Z"
     },
     {
       "slug": "tcplants-intro-2026",
-      "title": "TC Plants \u2014 Our Story",
+      "title": "TC Plants — Our Story",
       "brand": "tcplants",
       "status": "published",
-      "description": "Brand introduction and the story behind TC Plants \u2014 lab-grown plants for every garden.",
-      "created": "2026-05-22T00:00:00.000Z",
-      "updated": "2026-05-22T00:00:00.000Z"
-    },
-    {
-      "slug": "tcplants-catalogue-2026",
-      "title": "TC Plants \u2014 Lab-Grown Plant Catalogue 2026",
-      "brand": "tcplants",
-      "status": "published",
-      "description": "Full range of tissue culture propagated plants for bulk and retail \u2014 tcplants.in.",
-      "created": "2026-05-22T00:00:00.000Z",
-      "updated": "2026-05-22T00:00:00.000Z"
-    },
-    {
-      "slug": "tcplants-ad-2026",
-      "title": "TC Plants \u2014 Weekend Collection Drop",
-      "brand": "tcplants",
-      "status": "draft",
-      "description": "Promotional ad for weekend new variety drops and limited stock arrivals.",
-      "created": "2026-05-22T00:00:00.000Z",
-      "updated": "2026-05-22T00:00:00.000Z"
-    },
-    {
-      "slug": "tcplants-poster-2026",
-      "title": "TC Plants \u2014 Rare Varieties Poster",
-      "brand": "tcplants",
-      "status": "draft",
-      "description": "Exhibition poster for rare tissue culture varieties \u2014 for plant fairs and events.",
       "created": "2026-05-22T00:00:00.000Z",
       "updated": "2026-05-22T00:00:00.000Z"
     },
     {
       "slug": "carnivorousplants-intro-2026",
-      "title": "Carnivorous Plants India \u2014 Our Passion",
+      "title": "Carnivorous Plants India — Our Passion",
       "brand": "carnivorousplants",
       "status": "published",
-      "description": "Brand story and introduction for Carnivorous Plants India \u2014 the country's leading CP specialist.",
-      "created": "2026-05-22T00:00:00.000Z",
-      "updated": "2026-05-22T00:00:00.000Z"
-    },
-    {
-      "slug": "carnivorous-plants-catalogue-2026",
-      "title": "Carnivorous Plants \u2014 Collector Catalogue 2026",
-      "brand": "carnivorousplants",
-      "status": "published",
-      "description": "India's exclusive carnivorous plant collection \u2014 Nepenthes, Sarracenia, Dionaea and more.",
-      "created": "2026-05-22T00:00:00.000Z",
-      "updated": "2026-05-22T00:00:00.000Z"
-    },
-    {
-      "slug": "carnivorousplants-ad-2026",
-      "title": "CP India \u2014 Nepenthes Festival 2026",
-      "brand": "carnivorousplants",
-      "status": "draft",
-      "description": "Event ad for the annual Nepenthes Festival \u2014 India's biggest carnivorous plant event.",
-      "created": "2026-05-22T00:00:00.000Z",
-      "updated": "2026-05-22T00:00:00.000Z"
-    },
-    {
-      "slug": "carnivorousplants-poster-2026",
-      "title": "Carnivorous Plants \u2014 India's Rarest Species Poster",
-      "brand": "carnivorousplants",
-      "status": "draft",
-      "description": "Exhibition poster for trade shows featuring India's rarest carnivorous plant species.",
-      "created": "2026-05-22T00:00:00.000Z",
-      "updated": "2026-05-22T00:00:00.000Z"
-    },
-    {
-      "slug": "nepenthes-sales-2026-06",
-      "title": "Nepenthes Sales 2026-06",
-      "brand": "carnivorousplants",
-      "status": "published",
-      "description": "Nepenthes hybrid clearance sale",
       "created": "2026-05-22T00:00:00.000Z",
       "updated": "2026-05-22T00:00:00.000Z"
     }
