@@ -637,7 +637,7 @@ async function ghTryGetEnc(path){
 async function loadCatalogue(){
   // Load sample/template entries from the public catalogue (always available)
   const sf=await ghTryGet('data/catalogue.json');
-  const samples=sf?JSON.parse(atob(sf.content.replace(/\n/g,''))).presentations||[]:[];
+  const samples=sf?JSON.parse(decodeURIComponent(escape(atob(sf.content.replace(/\n/g,''))))).presentations||[]:[];
 
   const r=await ghTryGetEnc('data/catalogue.enc');
   if(r){
@@ -664,7 +664,7 @@ async function updatePublicCatalogue(){
     .map(({slug,title,brand,status,visible_from,expires,created,updated,slides_count})=>({slug,title,brand,status,visible_from,expires,created,updated,slides_count}));
   const existing=await ghTryGet('data/catalogue.json');
   // Preserve sample entries not managed by the user's encrypted catalogue
-  const existingData=existing?JSON.parse(atob(existing.content.replace(/\n/g,''))):null;
+  const existingData=existing?JSON.parse(decodeURIComponent(escape(atob(existing.content.replace(/\n/g,''))))):null;
   const samples=(existingData?.presentations||[]).filter(p=>!userSlugs.has(p.slug));
   await ghPut('data/catalogue.json',JSON.stringify({presentations:[...pub,...samples]},null,2),'Update public catalogue',existing?.sha);
 }
@@ -676,7 +676,7 @@ async function loadPresJSON(slug){
   if(enc){enc.data._sha=enc.sha;return enc.data;}
   const f=await ghTryGet(`data/presentations/${slug}.json`);
   if(f){
-    const d=JSON.parse(atob(f.content.replace(/\n/g,'')));
+    const d=JSON.parse(decodeURIComponent(escape(atob(f.content.replace(/\n/g,'')))));
     d._sha=null;d._legacySha=f.sha;d._legacyPath=`data/presentations/${slug}.json`;
     if(d.slides?.length>0&&d.slides[0].html!==undefined&&!d.slides[0].fabricJson)d._isLegacyV1=true;
     return d;
