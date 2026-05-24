@@ -4474,7 +4474,8 @@ async function ptAskClaude(userInput){
   const stopThink=()=>{if(thinkId){clearInterval(thinkId);thinkId=null;}ptClear();};
   startThink();
   try{
-    for(let hop=0;hop<5;hop++){
+    const maxHops=NIM_MODEL_IDS[PT.model]?2:5;
+    for(let hop=0;hop<maxHops;hop++){
       if(!PT.busy){stopThink();return;}
       const maxHist={fast:6,quality:20,deepseek:8,qwen:8,coder:8}[PT.model]||8;
       const msgLimit=NIM_MODEL_IDS[PT.model]?800:2000;
