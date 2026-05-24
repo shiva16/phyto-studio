@@ -4476,9 +4476,10 @@ async function ptAskClaude(userInput){
   try{
     for(let hop=0;hop<5;hop++){
       if(!PT.busy){stopThink();return;}
-      const maxHist={fast:6,quality:20}[PT.model]||PT.messages.length;
+      const maxHist={fast:6,quality:20,deepseek:8,qwen:8,coder:8}[PT.model]||8;
+      const msgLimit=NIM_MODEL_IDS[PT.model]?800:2000;
       const hist=PT.messages.slice(-maxHist).map(m=>
-        m.content.length>2000?{...m,content:m.content.slice(0,2000)+'…(truncated)'}:m
+        m.content.length>msgLimit?{...m,content:m.content.slice(0,msgLimit)+'…(truncated)'}:m
       );
       const msgs=[
         {role:'user',content:PT_SYS+'\n\nContext: repo='+PT.repo+', branch='+PT.branch+', path=/'+(PT.path||'')+', user='+(PT.ghUser||GH_OWNER)},
